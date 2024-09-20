@@ -8,6 +8,10 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.0", "8.1", "8.3"]
     steps:
       -
         name: Set up QEMU
@@ -22,30 +26,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: Build and push unity agent
+        name: Build and push farah
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: faulo/jenkins-unity:latest
-          file: Dockerfile-Unity
-      -
-        name: Build and push cloud agent
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          tags: faulo/jenkins-agent:latest
-          file: Dockerfile-Agent
-      -
-        name: Build and push host
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          tags: faulo/jenkins-host:latest
-          file: Dockerfile-Host
-      -
-        name: Build and push singleton Jenkins
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          tags: faulo/jenkins:latest
+          tags: faulo/farah:${{matrix.php}}
           file: Dockerfile
+          build-args: 
+            PHP_VERSION: ${{matrix.php}}
