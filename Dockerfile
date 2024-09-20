@@ -35,7 +35,7 @@ RUN apt upgrade -y
 RUN mkdir -m 0777 cache
 RUN mkdir -m 0777 data
 RUN mkdir -m 0777 log
-COPY public public
+COPY public html
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 
 # Composer
@@ -45,6 +45,5 @@ RUN composer require slothsoft/farah --update-no-dev
 
 # Apache
 ENV SERVER_NAME=localhost
-RUN echo "ServerName \$SERVER_NAME" >> /etc/apache2/apache2.conf
-RUN echo "DocumentRoot /var/www/public" >> /etc/apache2/apache2.conf
+RUN echo "ServerName \${SERVER_NAME}" >> /etc/apache2/apache2.conf
 EXPOSE 80
