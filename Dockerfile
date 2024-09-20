@@ -1,4 +1,5 @@
-FROM php:7.4-apache
+ARG PHP_VERSION=7.4
+FROM php:${PHP_VERSION}-apache
 WORKDIR /var/www
 
 # PHP extensions
@@ -40,7 +41,7 @@ COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ARG COMPOSER_ALLOW_SUPERUSER=1
-RUN composer require slothsoft/farah --no-dev
+RUN composer require slothsoft/farah --update-no-dev
 
 # Apache
 ENV SERVER_NAME=localhost
