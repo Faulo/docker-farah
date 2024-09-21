@@ -50,5 +50,5 @@ RUN echo "DirectoryIndex index.php index.xhtml index.html index.svg" >> /etc/apa
 RUN echo "FallbackResource /index.php" >> /etc/apache2/apache2.conf
 
 EXPOSE 80
-COPY init.sh /init.sh
+COPY --chmod=777 init.sh /init.sh
 CMD ["/init.sh"]
