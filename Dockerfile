@@ -46,4 +46,9 @@ RUN composer require slothsoft/farah --update-no-dev
 # Apache
 ENV SERVER_NAME=localhost
 RUN echo "ServerName \${SERVER_NAME}" >> /etc/apache2/apache2.conf
+RUN echo "DirectoryIndex index.php index.xhtml index.html index.svg" >> /etc/apache2/apache2.conf
+RUN echo "FallbackResource /index.php" >> /etc/apache2/apache2.conf
+
 EXPOSE 80
+COPY init.sh /init.sh
+CMD ["/init.sh"]
