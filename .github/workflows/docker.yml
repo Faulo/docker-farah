@@ -32,5 +32,4 @@ jobs:
           push: true
           tags: faulo/farah:${{matrix.php}}
           file: Dockerfile
-          build-args: |
-            PHP_VERSION: ${{matrix.php}}
+          build-args: PHP_VERSION=${{matrix.php}}
