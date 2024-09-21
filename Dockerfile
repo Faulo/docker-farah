@@ -35,7 +35,7 @@ RUN apt upgrade -y
 RUN mkdir -m 0777 cache
 RUN mkdir -m 0777 data
 RUN mkdir -m 0777 log
-COPY public html
+COPY html html
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 
 # Composer
