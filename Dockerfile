@@ -44,5 +44,6 @@ RUN composer require slothsoft/farah --update-no-dev
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
+RUN chmod 777 /var/www
 
 EXPOSE 80
