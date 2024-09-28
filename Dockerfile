@@ -32,11 +32,8 @@ RUN docker-php-ext-install dom && \
 RUN apt upgrade -y
 
 # Farah
-RUN mkdir -m 0777 cache
-RUN mkdir -m 0777 data
-RUN mkdir -m 0777 log
-COPY --chmod=777 farah farah
-COPY php.ini /usr/local/etc/php/conf.d/custom.ini
+COPY --chmod=777 farah /usr/share/farah
+CMD ["/usr/share/farah/init.sh"]
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -44,11 +41,8 @@ ARG COMPOSER_ALLOW_SUPERUSER=1
 RUN composer require slothsoft/farah --update-no-dev
 
 # Apache
-ENV SERVER_NAME=localhost
-RUN echo "ServerName \${SERVER_NAME}" >> /etc/apache2/apache2.conf
-RUN echo "DirectoryIndex index.php index.xhtml index.html index.svg" >> /etc/apache2/apache2.conf
-RUN echo "Alias /farah.php /var/www/farah/index.php" >> /etc/apache2/apache2.conf
-RUN echo "FallbackResource /farah.php" >> /etc/apache2/apache2.conf
+COPY php.ini /usr/local/etc/php/conf.d/custom.ini
+COPY apache.conf /etc/apache2/conf-available/custom.conf
+RUN a2enconf custom
 
 EXPOSE 80
-CMD ["/var/www/farah/init.sh"]
