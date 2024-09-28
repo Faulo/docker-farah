@@ -35,7 +35,7 @@ RUN apt upgrade -y
 RUN mkdir -m 0777 cache
 RUN mkdir -m 0777 data
 RUN mkdir -m 0777 log
-COPY html html
+COPY --chmod=777 farah farah
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 
 # Composer
@@ -47,8 +47,8 @@ RUN composer require slothsoft/farah --update-no-dev
 ENV SERVER_NAME=localhost
 RUN echo "ServerName \${SERVER_NAME}" >> /etc/apache2/apache2.conf
 RUN echo "DirectoryIndex index.php index.xhtml index.html index.svg" >> /etc/apache2/apache2.conf
-RUN echo "FallbackResource /index.php" >> /etc/apache2/apache2.conf
+RUN echo "Alias /farah.php /var/www/farah/index.php" >> /etc/apache2/apache2.conf
+RUN echo "FallbackResource /farah.php" >> /etc/apache2/apache2.conf
 
 EXPOSE 80
-COPY --chmod=777 init.sh /init.sh
-CMD ["/init.sh"]
+CMD ["/var/www/farah/init.sh"]
