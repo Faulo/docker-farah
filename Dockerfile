@@ -5,30 +5,21 @@ WORKDIR /var/www
 # PHP extensions
 RUN apt update
 RUN apt install -y libcurl4-openssl-dev && \
-	docker-php-ext-install curl && \
-	docker-php-ext-enable curl
+	docker-php-ext-install curl
 RUN apt install -y libxslt1-dev && \
-    docker-php-ext-install xsl && \
-	docker-php-ext-enable xsl
+    docker-php-ext-install xsl
 RUN apt install -y libzip-dev unzip && \
-	docker-php-ext-install zip && \
-	docker-php-ext-enable zip
+	docker-php-ext-install zip
 RUN apt install -y libonig-dev && \
-    docker-php-ext-install mbstring && \
-	docker-php-ext-enable mbstring
+    docker-php-ext-install mbstring
 RUN apt install -y libpng-dev imagemagick && \
-    docker-php-ext-install gd && \
-	docker-php-ext-enable gd
-RUN docker-php-ext-install fileinfo && \
-	docker-php-ext-enable fileinfo
-RUN docker-php-ext-install sockets && \
-	docker-php-ext-enable sockets
-RUN docker-php-ext-install exif && \
-	docker-php-ext-enable exif
-RUN docker-php-ext-install intl && \
-	docker-php-ext-enable intl
-RUN docker-php-ext-install dom && \
-	docker-php-ext-enable dom
+    docker-php-ext-install gd
+RUN docker-php-ext-install fileinfo
+RUN docker-php-ext-install sockets
+RUN docker-php-ext-install exif
+RUN docker-php-ext-install intl
+RUN docker-php-ext-install dom
+RUN docker-php-ext-install mysqli
 RUN apt upgrade -y
 
 # Farah
