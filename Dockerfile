@@ -38,4 +38,7 @@ COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
 RUN chmod 777 /var/www
 
+# Cleanup
+RUN apt clean && rm -rf /var/lib/apt/lists/*
+
 EXPOSE 80
