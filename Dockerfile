@@ -20,6 +20,7 @@ RUN docker-php-ext-install exif
 RUN docker-php-ext-install intl
 RUN docker-php-ext-install dom
 RUN docker-php-ext-install mysqli
+RUN docker-php-ext-install ds
 RUN apt upgrade -y
 
 # Farah
