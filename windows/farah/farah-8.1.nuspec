@@ -1,0 +1,16 @@
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>farah</id>
+    <version>1.0.0</version>
+    <title>Slothsoft's Farah CMS</title>
+    <authors>Daniel Schulz</authors>
+    <description>Files and Resources and Hypertext</description>
+    <dependencies>
+      <dependency id="apache-httpd" version="[2.4,3.0)" />
+      <dependency id="php" version="[8.1,8.2)" />
+	  <dependency id="composer" />
+	  <dependency id="git" />
+	  <dependency id="7zip" />
+    </dependencies>
+  </metadata>
+</package>
