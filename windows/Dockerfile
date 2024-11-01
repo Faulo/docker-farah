@@ -40,5 +40,5 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer require slothsoft/farah --no-interaction --update-no-dev
 
 # Cleanup
-RUN net stop Apache
-RUN Remove-Item -Force C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/logs/*
+RUN net stop Apache; \
+    Remove-Item -Force C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/logs/*
