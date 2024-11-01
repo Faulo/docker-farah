@@ -1,5 +1,7 @@
 ARG PHP_VERSION=7.4
 FROM php:${PHP_VERSION}-apache
+ARG PHP_VERSION=7.4
+ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR /var/www
 
 # PHP extensions
@@ -29,7 +31,7 @@ CMD ["/usr/share/farah/init.sh"]
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-ARG COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer require slothsoft/farah --update-no-dev
 
 # Apache
@@ -38,6 +40,7 @@ COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
 RUN chmod 777 /var/www
 
+ENV SERVER_NAME=localhost
 EXPOSE 80
 
 # Cleanup
