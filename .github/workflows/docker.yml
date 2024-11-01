@@ -30,6 +30,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: faulo/farah:${{matrix.php}}
+          tags: ${{ secrets.DOCKER_USERNAME }}/farah:${{matrix.php}}
           file: Dockerfile
           build-args: PHP_VERSION=${{matrix.php}}
