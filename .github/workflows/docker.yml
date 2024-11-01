@@ -7,24 +7,28 @@ on:
 
 jobs:
   docker-windows:
-    runs-on: windows-2019
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         php: ["7.4", "8.0", "8.1", "8.2", "8.3"]
         os: ["windows"]
     steps:
-      - uses: actions/checkout@v4
-      - name: Build and push farah:${{matrix.php}} for ${{matrix.os}}
+      - 
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - 
+        name: Build and push farah:${{matrix.php}} for ${{matrix.os}}
         working-directory: .
         run: |
-          docker login -u $env:username -p $env:password
           docker build -t faulo/farah:${{matrix.php}} ${{matrix.os}}
           docker image push faulo/farah:${{matrix.php}}
-          docker logout
-        env:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
   docker-linux:
     runs-on: ubuntu-latest
     strategy:
