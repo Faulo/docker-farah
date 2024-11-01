@@ -7,7 +7,7 @@ on:
 
 jobs:
   docker-windows:
-    runs-on: windows-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
