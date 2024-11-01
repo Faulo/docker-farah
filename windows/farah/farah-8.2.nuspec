@@ -11,6 +11,7 @@
 	  <dependency id="composer" />
 	  <dependency id="git" />
 	  <dependency id="7zip" />
+	  <dependency id="curl" />
     </dependencies>
   </metadata>
 </package>

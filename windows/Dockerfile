@@ -4,11 +4,6 @@ SHELL ["powershell", "-Command"]
 ARG PHP_VERSION=7.4
 ENV PHP_VERSION=${PHP_VERSION}
 
-# curl
-RUN choco install curl -y; \
-    Remove-Item -Force Alias:curl; \
-    curl --version
-
 # Farah
 COPY farah C:/farah
 CMD ["C:/farah/init.bat"]
