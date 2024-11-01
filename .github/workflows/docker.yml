@@ -6,14 +6,39 @@ on:
       - 'main'
 
 jobs:
-  docker:
+  docker-windows:
     runs-on: windows-2019
     strategy:
       fail-fast: false
       matrix:
         php: ["7.4", "8.0", "8.1", "8.2", "8.3"]
-        os: ["linux", "windows"]
+        os: ["windows"]
     steps:
+      - uses: actions/checkout@v4
+      - name: Build and push farah:${{matrix.php}} for ${{matrix.os}}
+        working-directory: .
+        run: |
+          docker login -u $env:username -p $env:password
+          docker build -t faulo/farah:${{matrix.php}} ${{matrix.os}}
+          docker image push faulo/farah:${{matrix.php}}
+          docker logout
+        env:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+  docker-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.0", "8.1", "8.2", "8.3"]
+        os: ["linux"]
+    steps:
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       -
         name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -21,12 +46,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: Build and push farah
+        name: Build and push farah:${{matrix.php}} for ${{matrix.os}}
         uses: docker/build-push-action@v5
         with:
           push: true
           tags: faulo/farah:${{matrix.php}}
-          platforms: ${{ matrix.os }}/amd64
-          context: "{{ defaultContext }}:${{ matrix.os  }}"
+          platforms: ${{matrix.os}}/amd64
+          context: "{{defaultContext}}:${{matrix.os}}"
           file: Dockerfile
           build-args: PHP_VERSION=${{matrix.php}}
