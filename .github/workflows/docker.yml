@@ -27,7 +27,7 @@ jobs:
         name: Build and push farah:${{matrix.php}} for ${{matrix.os}}
         working-directory: .
         run: |
-          docker build --network=host -t faulo/farah:${{matrix.php}} ${{matrix.os}}
+          docker build -t faulo/farah:${{matrix.php}} ${{matrix.os}}
           docker image push faulo/farah:${{matrix.php}}
   docker-linux:
     runs-on: ubuntu-latest
