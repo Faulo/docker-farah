@@ -13,8 +13,7 @@ WORKDIR C:/farah
 RUN choco pack farah-$env:PHP_VERSION.nuspec; \
     choco install farah -y --source '.;https://community.chocolatey.org/api/v2/'; \
 	Remove-Item -Force *.nuspec; \
-	Remove-Item -Force *.nupkg; \
-	php --version
+	Remove-Item -Force *.nupkg
 	
 COPY apache.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/custom.conf
 COPY php-${PHP_VERSION}.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/php.conf
