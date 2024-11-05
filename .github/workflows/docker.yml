@@ -29,7 +29,7 @@ jobs:
         run: docker build ${{matrix.os}} -t faulo/farah:${{matrix.php}}-${{matrix.os}}
       - 
         name: Push farah:${{matrix.php}} for ${{matrix.os}}
-        run: docker image push faulo/farah:${{matrix.php}} --platform ${{matrix.os}}/amd64
+        run: docker image push faulo/farah:${{matrix.php}}-${{matrix.os}}
   docker-linux:
     runs-on: ubuntu-latest
     strategy:
