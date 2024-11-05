@@ -75,7 +75,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Merge manifests
-        uses: Noelware/docker-manifest-action
+        uses: Noelware/docker-manifest-action@master
         with:
           inputs: faulo/farah:${{matrix.php}}
           images: faulo/farah:${{matrix.php}}-linux, faulo/farah:${{matrix.php}}-windows
