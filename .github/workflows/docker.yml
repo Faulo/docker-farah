@@ -24,12 +24,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - 
-        name: Build farah:${{matrix.php}} for ${{matrix.os}}
+        name: Build and push farah:${{matrix.php}} for ${{matrix.os}}
         working-directory: .
-        run: docker build -t faulo/farah:${{matrix.php}} ${{matrix.os}}
-      - 
-        name: Push farah:${{matrix.php}} for ${{matrix.os}}
-        run: docker image push faulo/farah:${{matrix.php}} --platform ${{matrix.os}}/amd64
+        run: docker build ${{matrix.os}} -t faulo/farah:${{matrix.php}}-${{matrix.os}} --push
   docker-linux:
     runs-on: ubuntu-latest
     strategy:
@@ -55,8 +52,31 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: faulo/farah:${{matrix.php}}
+          tags: faulo/farah:${{matrix.php}}-${{matrix.os}}
           platforms: ${{matrix.os}}/amd64
           context: "{{defaultContext}}:${{matrix.os}}"
           file: Dockerfile
           build-args: PHP_VERSION=${{matrix.php}}
+  merge:
+    runs-on: ubuntu-latest
+    needs:
+    - docker-windows
+    - docker-linux
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.0", "8.1", "8.2", "8.3"]
+    steps:
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Merge manifests
+        uses: Noelware/docker-manifest-action
+        with:
+          inputs: faulo/farah:${{matrix.php}}
+          images: faulo/farah:${{matrix.php}}-linux, faulo/farah:${{matrix.php}}-windows
+          push: true
