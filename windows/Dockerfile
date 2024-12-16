@@ -18,7 +18,6 @@ RUN choco pack farah-$env:PHP_VERSION.nuspec; \
 COPY apache.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/custom.conf
 COPY php-${PHP_VERSION}.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/php.conf
 COPY mod_fcgid.so C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/modules/mod_fcgid.so
-COPY html C:/www/html
 RUN Add-Content -Path C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/httpd.conf -Value 'Include conf/extra/custom.conf'
 RUN Add-Content -Path C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/httpd.conf -Value 'Include conf/extra/php.conf'
 ENV SERVER_NAME=localhost
@@ -32,8 +31,7 @@ RUN php -m
 # Composer
 WORKDIR C:/www
 ENV COMPOSER_ALLOW_SUPERUSER=1
-RUN composer require slothsoft/farah --no-interaction --update-no-dev
 
 # Cleanup
 RUN net stop Apache; \
-    Remove-Item -Force C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/logs/*
+    Remove-Item -Recurse -Force C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/logs/*
