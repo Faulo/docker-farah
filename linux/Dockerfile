@@ -32,13 +32,11 @@ CMD ["/usr/share/farah/init.sh"]
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER=1
-RUN composer require slothsoft/farah --update-no-dev
 
 # Apache
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
-RUN chmod 777 /var/www
 
 ENV SERVER_NAME=localhost
 EXPOSE 80
