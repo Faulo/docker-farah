@@ -10,7 +10,6 @@ CMD ["C:/farah/init.bat"]
 
 # Apache
 WORKDIR C:/farah
-# RUN curl https://community.chocolatey.org/api/v2/
 RUN choco install farah-$env:PHP_VERSION.nuspec -y; \
 	Remove-Item -Force *.nuspec
 	
