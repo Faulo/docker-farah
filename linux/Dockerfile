@@ -6,30 +6,30 @@ WORKDIR /var/www
 
 # PHP extensions
 RUN apt update \
-	&& apt install -y \
-		libcurl4-openssl-dev \
-		libxslt1-dev \
-		libzip-dev \
-		unzip \
-		libonig-dev \
-		libpng-dev \
-		imagemagick \
-	&& pecl install \
-		ds \
-	&& docker-php-ext-install \
-		curl \
-		xsl \
-		zip \
-		mbstring \
-		gd \
-		fileinfo \
-		sockets \
-		exif \
-		intl \
-		mysqli \
-		dom \
-		ds \
-	&& apt upgrade -y
+  && apt install -y \
+    libcurl4-openssl-dev \
+    libxslt1-dev \
+    libzip-dev \
+    unzip \
+    libonig-dev \
+    libpng-dev \
+    imagemagick \
+  && pecl install \
+    ds \
+  && docker-php-ext-install \
+    curl \
+    xsl \
+    zip \
+    mbstring \
+    gd \
+    fileinfo \
+    sockets \
+    exif \
+    intl \
+    mysqli \
+    dom \
+    ds \
+  && apt upgrade -y
 
 # Farah
 COPY --chmod=777 farah /usr/share/farah
