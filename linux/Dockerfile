@@ -28,6 +28,7 @@ RUN apt update \
     intl \
     mysqli \
     dom \
+  && docker-php-ext-enable \
     ds \
   && apt upgrade -y
 
