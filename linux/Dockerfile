@@ -5,25 +5,31 @@ ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR /var/www
 
 # PHP extensions
-RUN apt update
-RUN apt install -y libcurl4-openssl-dev && \
-	docker-php-ext-install curl
-RUN apt install -y libxslt1-dev && \
-    docker-php-ext-install xsl
-RUN apt install -y libzip-dev unzip && \
-	docker-php-ext-install zip
-RUN apt install -y libonig-dev && \
-    docker-php-ext-install mbstring
-RUN apt install -y libpng-dev imagemagick && \
-    docker-php-ext-install gd
-RUN docker-php-ext-install fileinfo
-RUN docker-php-ext-install sockets
-RUN docker-php-ext-install exif
-RUN docker-php-ext-install intl
-RUN docker-php-ext-install dom
-RUN docker-php-ext-install mysqli
-RUN pecl install ds && docker-php-ext-enable ds
-RUN apt upgrade -y
+RUN apt update \
+	&& apt install -y \
+		libcurl4-openssl-dev \
+		libxslt1-dev \
+		libzip-dev \
+		unzip \
+		libonig-dev \
+		libpng-dev \
+		imagemagick \
+	&& pecl install \
+		ds \
+	&& docker-php-ext-install \
+		curl \
+		xsl \
+		zip \
+		mbstring \
+		gd \
+		fileinfo \
+		sockets \
+		exif \
+		intl \
+		mysqli \
+		dom \
+		ds \
+	&& apt upgrade -y
 
 # Farah
 COPY --chmod=777 farah /usr/share/farah
