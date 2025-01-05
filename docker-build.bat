@@ -1,4 +1,7 @@
-SET PHP_VERSION=8.3
+setlocal
+cd %~dp0
+call load-env
 for /f %%i in ('docker info --format "{{.OSType}}"') do SET DOCKER_OS=%%i
-call docker build --isolation=hyperv -t faulo/farah:test --build-arg PHP_VERSION=%PHP_VERSION% %DOCKER_OS%
+call docker build --isolation=hyperv -t faulo/farah:%PHP_VERSION% --build-arg PHP_VERSION=%PHP_VERSION% %DOCKER_OS%
+endlocal
 pause
