@@ -24,14 +24,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - 
-        name: Build farah:${{matrix.php}} for ${{matrix.os}}
+        name: Build ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
         working-directory: .
-        run: docker build --isolation=hyperv ${{matrix.os}} -t faulo/farah:${{matrix.php}}-${{matrix.os}} --build-arg PHP_VERSION=${{matrix.php}}
+        run: docker build --isolation=hyperv ${{matrix.os}} -t ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}} --build-arg PHP_VERSION=${{matrix.php}}
       - 
-        name: Push farah:${{matrix.php}} for ${{matrix.os}}
-        run: docker image push faulo/farah:${{matrix.php}}-${{matrix.os}}
+        name: Push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
+        run: docker image push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
   docker-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -51,18 +51,18 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: Build and push farah:${{matrix.php}} for ${{matrix.os}}
+        name: Build and push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: faulo/farah:${{matrix.php}}-${{matrix.os}}
+          tags: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
           platforms: ${{matrix.os}}/amd64
           context: "{{defaultContext}}:${{matrix.os}}"
           file: Dockerfile
           build-args: PHP_VERSION=${{matrix.php}}
           provenance: false
   merge:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
     - docker-windows
     - docker-linux
@@ -81,6 +81,6 @@ jobs:
         name: Merge manifests
         uses: Noelware/docker-manifest-action@master
         with:
-          inputs: faulo/farah:${{matrix.php}}
-          images: faulo/farah:${{matrix.php}}-linux, faulo/farah:${{matrix.php}}-windows
+          inputs: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}
+          images: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-linux, ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-windows
           push: true
