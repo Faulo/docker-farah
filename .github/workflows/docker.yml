@@ -82,5 +82,5 @@ jobs:
         uses: Noelware/docker-manifest-action@master
         with:
           inputs: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}
-          images: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-linux, ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-windows
+          tags: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-linux, ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-windows
           push: true
