@@ -84,3 +84,4 @@ jobs:
           inputs: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}
           tags: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-linux, ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-windows
           push: true
+          fallback: true
