@@ -1,10 +1,10 @@
 FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-ltsc2019
 
+# SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell"]
 SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop';"]
 
 # Chocolatey
-RUN [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
-    iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+RUN iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 ARG PHP_VERSION=7.4
 ENV PHP_VERSION=${PHP_VERSION}
@@ -26,8 +26,16 @@ ENV SERVER_NAME=localhost
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # PHP
+COPY ext-${PHP_VERSION}/* C:/tools/php/ext/
+RUN $phpPath = (Get-Command php | Select-Object -ExpandProperty Source); \
+    $phpDir = Split-Path $phpPath; \
+    $extDir = Join-Path $phpDir 'ext'; \
+    Copy-Item -Path 'C:/tools/php/ext/*' -Destination $extDir -Force; \
+    dir $extDir
+COPY php-${PHP_VERSION}.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/php.conf
 ENV PHP_INI_SCAN_DIR=C:\\tools\\php
 COPY php.ini C:/tools/php/custom.ini
+RUN Add-Content -Path C:/tools/php/custom.ini -Value (Get-Content C:/tools/php/ext/php.ini -Raw)
 RUN php -m
 
 # Farah

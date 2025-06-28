@@ -12,6 +12,7 @@
 	  <dependency id="git" />
 	  <dependency id="7zip" />
 	  <dependency id="curl" />
+      <dependency id="imagemagick" />
     </dependencies>
   </metadata>
 </package>
