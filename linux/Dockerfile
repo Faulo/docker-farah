@@ -15,6 +15,7 @@ RUN apt update \
     libpng-dev \
     libmagickwand-dev \
     imagemagick \
+    git \
  && pecl install \
     ds \
     imagick \
