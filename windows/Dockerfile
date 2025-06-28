@@ -1,7 +1,6 @@
 FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-ltsc2019
 
-# SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell"]
-SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop';"]
+SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell", "-NonInteractive", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 # Chocolatey
 RUN iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
@@ -36,7 +35,8 @@ COPY php-${PHP_VERSION}.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apa
 ENV PHP_INI_SCAN_DIR=C:\\tools\\php
 COPY php.ini C:/tools/php/custom.ini
 RUN Add-Content -Path C:/tools/php/custom.ini -Value (Get-Content C:/tools/php/ext/php.ini -Raw)
-RUN php -m
+RUN php -v; \
+    php -m
 
 # Farah
 COPY farah C:/farah
