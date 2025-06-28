@@ -6,31 +6,31 @@ WORKDIR /var/www
 
 # PHP extensions
 RUN apt update \
-  && apt install -y \
+ && apt install -y \
     libcurl4-openssl-dev \
     libxslt1-dev \
     libzip-dev \
     unzip \
     libonig-dev \
     libpng-dev \
+    libmagickwand-dev \
     imagemagick \
-  && pecl install \
+ && pecl install \
     ds \
-  && docker-php-ext-install \
-    curl \
+    imagick \
+ && docker-php-ext-install \
     xsl \
-    zip \
-    mbstring \
     gd \
-    fileinfo \
     sockets \
     exif \
-    intl \
     mysqli \
-    dom \
-  && docker-php-ext-enable \
+    intl \
+ && docker-php-ext-enable \
     ds \
-  && apt upgrade -y
+    opcache \
+    imagick \
+ && apt upgrade -y \
+ && apt clean && rm -rf /var/lib/apt/lists/*
 
 # Farah
 COPY --chmod=777 farah /usr/share/farah
@@ -44,9 +44,8 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
+RUN php -v \
+ && php -m
 
 ENV SERVER_NAME=localhost
 EXPOSE 80
-
-# Cleanup
-RUN apt clean && rm -rf /var/lib/apt/lists/*
