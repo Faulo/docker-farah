@@ -12,7 +12,7 @@ WORKDIR C:/www
 # Apache
 COPY farah-${PHP_VERSION}.nuspec farah.nuspec
 RUN choco pack farah.nuspec; \
-    choco install farah -y --source '.;https://community.chocolatey.org/api/v2/'; \
+    choco install --no-progress farah -y --source '.;https://community.chocolatey.org/api/v2/'; \
 	Remove-Item -Force *.nuspec; \
 	Remove-Item -Force *.nupkg
 
