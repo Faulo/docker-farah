@@ -10,6 +10,8 @@ ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR C:/www
 
 # Apache
+ENV SERVER_NAME=localhost
+EXPOSE 80
 COPY farah-${PHP_VERSION}.nuspec farah.nuspec
 RUN choco pack farah.nuspec; \
     choco install --no-progress farah -y --source '.;https://community.chocolatey.org/api/v2/'; \
@@ -23,7 +25,6 @@ COPY mod_fcgid.so C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/modul
 RUN ping localhost; \
     Add-Content -Path C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/httpd.conf -Value 'Include conf/extra/custom.conf'; \
     Add-Content -Path C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/httpd.conf -Value 'Include conf/extra/php.conf'
-ENV SERVER_NAME=localhost
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # PHP
@@ -44,4 +45,3 @@ RUN php -v; \
 COPY farah C:/farah
 RUN git config --global --add safe.directory *
 CMD ["C:/farah/init.bat"]
-EXPOSE 80

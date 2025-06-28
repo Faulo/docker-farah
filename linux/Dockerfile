@@ -34,6 +34,7 @@ RUN apt update \
 
 # Farah
 COPY --chmod=777 farah /usr/share/farah
+RUN git config --global --add safe.directory *
 CMD ["/usr/share/farah/init.sh"]
 
 # Composer
@@ -41,11 +42,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Apache
+ENV SERVER_NAME=localhost
+EXPOSE 80
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
 RUN php -v \
  && php -m
-
-ENV SERVER_NAME=localhost
-EXPOSE 80
