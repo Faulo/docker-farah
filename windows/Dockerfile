@@ -43,5 +43,4 @@ RUN php -v; \
 
 # Farah
 COPY farah C:/farah
-RUN git config --global --add safe.directory *
 CMD ["C:/farah/init.bat"]
