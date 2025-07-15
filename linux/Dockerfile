@@ -16,24 +16,31 @@ RUN apt update \
     libmagickwand-dev \
     imagemagick \
     git \
- && pecl install \
+    libc-client-dev \
+    libkrb5-dev \
+ && apt upgrade -y \
+ && apt clean \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN pecl install \
     ds \
-    imagick \
-    imap \
+    imagick
+
+RUN docker-php-ext-enable \
+    opcache \
+    ds \
+    imagick
+
+RUN docker-php-ext-configure \
+    imap --with-kerberos --with-imap-ssl \
  && docker-php-ext-install \
+    exif \
     xsl \
     gd \
     sockets \
-    exif \
     mysqli \
     intl \
- && docker-php-ext-enable \
-    ds \
-    opcache \
-    imagick \
-    imap \
- && apt upgrade -y \
- && apt clean && rm -rf /var/lib/apt/lists/*
+    imap
 
 # Farah
 COPY --chmod=777 farah /usr/share/farah
