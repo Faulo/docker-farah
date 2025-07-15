@@ -30,7 +30,8 @@ RUN apt update; \
     docker-php-ext-enable \
         ds \
         opcache \
-        imagick; \
+        imagick \
+        iamp; \
     apt upgrade -y; \
     apt clean; \
     rm -rf /var/lib/apt/lists/*
