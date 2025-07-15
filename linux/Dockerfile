@@ -5,8 +5,8 @@ ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR /var/www
 
 # PHP extensions
-RUN apt update \
- && apt install -y \
+RUN apt update; \
+    apt install -y \
         libcurl4-openssl-dev \
         libxslt1-dev \
         libzip-dev \
@@ -15,25 +15,25 @@ RUN apt update \
         libpng-dev \
         libmagickwand-dev \
         imagemagick \
-        git \
- && pecl install \
+        git; \
+    pecl install \
         ds \
         imagick \
- && docker-php-ext-install \
+        imap; \
+    docker-php-ext-install \
         xsl \
         gd \
         sockets \
         exif \
         mysqli \
-        intl \
-        imap \
- && docker-php-ext-enable \
+        intl; \
+    docker-php-ext-enable \
         ds \
         opcache \
-        imagick \
- && apt upgrade -y \
- && apt clean \
- && rm -rf /var/lib/apt/lists/*
+        imagick; \
+    apt upgrade -y; \
+    apt clean; \
+    rm -rf /var/lib/apt/lists/*
 
 # Farah
 COPY --chmod=777 farah /usr/share/farah
