@@ -19,7 +19,7 @@ RUN apt update; \
     pecl install \
         ds \
         imagick; \
-    docker-php-ext-install; \
+    docker-php-ext-install \
         xsl \
         gd \
         sockets \
