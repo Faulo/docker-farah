@@ -16,6 +16,7 @@ RUN apt update \
     libmagickwand-dev \
     imagemagick \
     git \
+    libc-client-dev \
     libkrb5-dev \
  && apt upgrade -y \
  && apt clean \
