@@ -59,3 +59,11 @@ COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
 RUN php -v \
  && php -m
+
+# Wine
+RUN dpkg --add-architecture i386 \
+ && apt update \
+ && apt install -y \
+    wine32 \
+ && apt clean \
+ && rm -rf /var/lib/apt/lists/*
