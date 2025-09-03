@@ -42,6 +42,8 @@ RUN docker-php-ext-configure \
     intl \
     imap
 
+COPY imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
+
 # Farah
 COPY --chmod=777 farah /usr/share/farah
 RUN git config --global --add safe.directory *
