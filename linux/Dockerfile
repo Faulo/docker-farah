@@ -40,7 +40,8 @@ RUN docker-php-ext-configure \
     sockets \
     mysqli \
     intl \
-    imap
+    imap \
+    zip
 
 COPY imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
