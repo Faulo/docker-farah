@@ -13,6 +13,7 @@
 	  <dependency id="7zip" />
 	  <dependency id="curl" />
       <dependency id="imagemagick" />
+      <dependency id="firefox" />
     </dependencies>
   </metadata>
 </package>

@@ -18,6 +18,7 @@ RUN apt update \
     git \
     libc-client-dev \
     libkrb5-dev \
+    wget \
  && apt upgrade -y \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
@@ -68,5 +69,15 @@ RUN dpkg --add-architecture i386 \
  && apt update \
  && apt install -y \
     wine32 \
+ && apt clean \
+ && rm -rf /var/lib/apt/lists/*
+
+ # Firefox
+RUN install -d -m 0755 /etc/apt/keyrings \
+ && wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- | tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null \
+ && echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" | tee -a /etc/apt/sources.list.d/mozilla.list > /dev/null \
+ && apt update \
+ && apt install -y \
+    firefox \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
