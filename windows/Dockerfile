@@ -45,6 +45,3 @@ RUN php -v; \
 COPY farah C:/farah
 RUN git config --global --add safe.directory *
 CMD ["C:/farah/init.bat"]
-
-# Firefox
-RUN choco install firefox --yes --install-arguments="/NoTaskbarShortcut /NoDesktopShortcut /NoStartMenuShortcut /NoMaintenanceService /NoAutoUpdate"
