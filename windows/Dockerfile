@@ -5,11 +5,6 @@ SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell", "-NonIntera
 # Chocolatey
 RUN iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
-# Fonts https://github.com/gantrior/docker-chrome-windows
-ADD FontsToAdd.tar /Fonts/
-WORKDIR /Fonts/
-RUN .\Add-Font.ps1 Fonts
-
 # PHP
 ARG PHP_VERSION=7.4
 ENV PHP_VERSION=${PHP_VERSION}
@@ -51,3 +46,8 @@ RUN php -v; \
 COPY farah C:/farah
 RUN git config --global --add safe.directory *
 CMD ["C:/farah/init.bat"]
+
+# Fonts https://github.com/gantrior/docker-chrome-windows
+ADD FontsToAdd.tar C:/TMP/
+RUN C:/TMP/Add-Font.ps1 C:/TMP/Fonts; \
+    Remove-Item -Force -Recurse C:/TMP
