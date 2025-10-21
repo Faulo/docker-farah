@@ -15,7 +15,7 @@ ENV SERVER_NAME=localhost
 EXPOSE 80
 COPY farah-${PHP_VERSION}.nuspec farah.nuspec
 RUN choco pack farah.nuspec; \
-    choco install --no-progress farah --yes --ignore-checksums --source '.;https://community.chocolatey.org/api/v2/'; \
+    choco install farah --no-progress --yes --ignore-checksums --source '.;https://community.chocolatey.org/api/v2/'; \
 	Remove-Item -Force *.nuspec; \
 	Remove-Item -Force *.nupkg
 
@@ -53,4 +53,4 @@ RUN C:/TMP/Add-Font.ps1 C:/TMP/Fonts; \
     Remove-Item -Force -Recurse C:/TMP
 
 # Firefox
-RUN choco install --no-progress Firefox --yes --skip-checksums --install-arguments='/NoTaskbarShortcut /NoDesktopShortcut /NoStartMenuShortcut /NoMaintenanceService /NoAutoUpdate'
+RUN choco install Firefox --no-progress --yes --skip-checksums --force --install-arguments='/NoTaskbarShortcut /NoDesktopShortcut /NoStartMenuShortcut /NoMaintenanceService /NoAutoUpdate'
