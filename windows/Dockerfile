@@ -51,3 +51,6 @@ CMD ["C:/farah/init.bat"]
 ADD FontsToAdd.tar C:/TMP/
 RUN C:/TMP/Add-Font.ps1 C:/TMP/Fonts; \
     Remove-Item -Force -Recurse C:/TMP
+
+# Firefox
+RUN choco install Firefox --force --yes --skip-checksums --params "/NoTaskbarShortcut /NoDesktopShortcut /NoStartMenuShortcut /NoMaintenanceService /NoAutoUpdate"
