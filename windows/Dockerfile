@@ -53,4 +53,4 @@ RUN C:/TMP/Add-Font.ps1 C:/TMP/Fonts; \
     Remove-Item -Force -Recurse C:/TMP
 
 # Firefox
-RUN choco install --no-progress Firefox --force --yes --skip-checksums --params="/NoTaskbarShortcut /NoDesktopShortcut /NoStartMenuShortcut /NoMaintenanceService /NoAutoUpdate"
+RUN choco install --no-progress Firefox --force --yes --skip-checksums --params='/NoTaskbarShortcut /NoDesktopShortcut /NoStartMenuShortcut /NoMaintenanceService /NoAutoUpdate'
