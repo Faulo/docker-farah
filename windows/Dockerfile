@@ -15,7 +15,7 @@ ENV SERVER_NAME=localhost
 EXPOSE 80
 COPY farah-${PHP_VERSION}.nuspec farah.nuspec
 RUN choco pack farah.nuspec; \
-    choco install --no-progress farah -y --source '.;https://community.chocolatey.org/api/v2/'; \
+    choco install --no-progress farah --yes --ignore-checksums --source '.;https://community.chocolatey.org/api/v2/'; \
 	Remove-Item -Force *.nuspec; \
 	Remove-Item -Force *.nupkg
 
