@@ -52,5 +52,5 @@ ADD FontsToAdd.tar C:/TMP/
 RUN C:/TMP/Add-Font.ps1 C:/TMP/Fonts; \
     Remove-Item -Force -Recurse C:/TMP
 
-# Firefox
-RUN choco install Firefox --no-progress --yes --skip-checksums --params='/NoTaskbarShortcut /NoDesktopShortcut /NoStartMenuShortcut /NoAutoUpdate'
+# Firefox - doesn't work with panther, disabled for now
+# RUN choco install Firefox --no-progress --yes --skip-checksums --params='/NoTaskbarShortcut /NoDesktopShortcut /NoStartMenuShortcut /NoAutoUpdate'
