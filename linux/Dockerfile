@@ -78,6 +78,6 @@ RUN install -d -m 0755 /etc/apt/keyrings \
  && echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" | tee -a /etc/apt/sources.list.d/mozilla.list > /dev/null \
  && apt update \
  && apt install -y \
-    firefox \
+    firefox=145.0.2~build1 \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
