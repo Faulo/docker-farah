@@ -68,13 +68,14 @@ RUN dpkg --add-architecture i386 \
     wine32 \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
-
+ 
  # Firefox
-RUN install -d -m 0755 /etc/apt/keyrings \
- && wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- | tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null \
- && echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" | tee -a /etc/apt/sources.list.d/mozilla.list > /dev/null \
- && apt update \
- && apt install -y \
-    firefox \
- && apt clean \
- && rm -rf /var/lib/apt/lists/*
+ ARG FIREFOX_VERSION=145.0.2
+ ARG FIREFOX_SHA256=dd3a7d4854a1a7ae13cc8bdc9013b34ea551bb9917de80901f25e2d63f6eeb6b
+
+ RUN set -eux; \
+     wget "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.deb" -O /tmp/firefox.deb; \
+     echo "${FIREFOX_SHA256}  /tmp/firefox.deb" | sha256sum -c -; \
+     apt-get install -y /tmp/firefox.deb; \
+     rm -f /tmp/firefox.deb; \
+     rm -rf /var/lib/apt/lists/*
