@@ -16,6 +16,29 @@ jobs:
                 php: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"]
                 os: ["windows"]
         steps:
+            - name: Ensure Docker is running
+              shell: pwsh
+              run: |
+                  $service = Get-Service docker -ErrorAction Stop
+                  if ($service.Status -ne 'Running') {
+                    Start-Service docker
+                  }
+
+                  $ready = $false
+                  1..24 | ForEach-Object {
+                    try {
+                      docker version
+                      $ready = $true
+                      return
+                    } catch {
+                      Start-Sleep -Seconds 5
+                    }
+                  }
+
+                  if (-not $ready) {
+                    Get-Service docker
+                    throw "Docker daemon not ready"
+                  }
             - name: Checkout
               uses: actions/checkout@v4
             - name: Login to Docker Hub
