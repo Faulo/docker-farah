@@ -19,7 +19,6 @@ RUN apt update \
     libc-client-dev \
     libkrb5-dev \
     wget \
- && apt upgrade -y \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
 
