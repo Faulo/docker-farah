@@ -22,26 +22,24 @@ RUN apt update \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pecl install \
-    ds \
-    imagick
-
-RUN docker-php-ext-enable \
-    opcache \
-    ds \
-    imagick
-
-RUN docker-php-ext-configure \
-    imap --with-kerberos --with-imap-ssl \
- && docker-php-ext-install \
-    exif \
-    xsl \
-    gd \
-    sockets \
-    mysqli \
-    intl \
-    imap \
-    zip
+RUN set -eux; \
+    pecl install ds imagick; \
+    docker-php-ext-enable opcache ds imagick; \
+    if dpkg --compare-versions "$PHP_VERSION" ge "8.4"; then \
+        pecl install imap; \
+        docker-php-ext-enable imap; \
+    else \
+        docker-php-ext-configure imap --with-kerberos --with-imap-ssl; \
+        docker-php-ext-install imap; \
+    fi; \
+    docker-php-ext-install \
+        exif \
+        xsl \
+        gd \
+        sockets \
+        mysqli \
+        intl \
+        zip
 
 COPY imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
@@ -77,6 +75,6 @@ RUN install -d -m 0755 /etc/apt/keyrings \
  && echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" | tee -a /etc/apt/sources.list.d/mozilla.list > /dev/null \
  && apt update \
  && apt install -y \
-    firefox=145.0.2~build1 \
+    firefox \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
