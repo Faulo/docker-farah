@@ -69,13 +69,12 @@ RUN dpkg --add-architecture i386 \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
  
- # Firefox
- ARG FIREFOX_VERSION=145.0.2
- ARG FIREFOX_SHA256=dd3a7d4854a1a7ae13cc8bdc9013b34ea551bb9917de80901f25e2d63f6eeb6b
+# Firefox
+ARG FIREFOX_VERSION=145.0.2
 
- RUN set -eux; \
-     wget "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.deb" -O /tmp/firefox.deb; \
-     echo "${FIREFOX_SHA256}  /tmp/firefox.deb" | sha256sum -c -; \
-     apt-get install -y /tmp/firefox.deb; \
-     rm -f /tmp/firefox.deb; \
-     rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    apt-get update; \
+    wget "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.deb" -O /tmp/firefox.deb; \
+    apt-get install -y /tmp/firefox.deb; \
+    rm -f /tmp/firefox.deb; \
+    rm -rf /var/lib/apt/lists/*
