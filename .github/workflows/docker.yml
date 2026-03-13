@@ -72,6 +72,8 @@ jobs:
                       debian: "bookworm"
                     - php: "8.4"
                       debian: "bookworm"
+                    - php: "8.5"
+                      debian: "bookworm"
         steps:
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v4
