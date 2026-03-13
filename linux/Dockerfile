@@ -1,5 +1,6 @@
 ARG PHP_VERSION=7.4
-FROM php:${PHP_VERSION}-apache-bullseye
+ARG DEBIAN=bullseye
+FROM php:${PHP_VERSION}-apache-${DEBIAN}
 ARG PHP_VERSION=7.4
 ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR /var/www
@@ -24,13 +25,17 @@ RUN apt update \
 
 RUN set -eux; \
     pecl install ds imagick; \
-    docker-php-ext-enable opcache ds imagick; \
     if dpkg --compare-versions "$PHP_VERSION" ge "8.4"; then \
         pecl install imap; \
         docker-php-ext-enable imap; \
     else \
         docker-php-ext-configure imap --with-kerberos --with-imap-ssl; \
         docker-php-ext-install imap; \
+    fi; \
+    if dpkg --compare-versions "$PHP_VERSION" ge "8.5"; then \
+        docker-php-ext-enable ds imagick; \
+    else \
+        docker-php-ext-enable opcache ds imagick; \
     fi; \
     docker-php-ext-install \
         exif \

@@ -10,11 +10,12 @@ on:
 jobs:
     docker-windows:
         runs-on: windows-2022
+        env:
+            os: windows
         strategy:
             fail-fast: false
             matrix:
-                php: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"]
-                os: ["windows"]
+                php: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]
         steps:
             - name: Ensure Docker is running
               shell: pwsh
@@ -46,18 +47,31 @@ jobs:
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
-            - name: Build ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
+            - name: Build ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
               working-directory: .
-              run: docker build --isolation=hyperv ${{matrix.os}} -t ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}} --build-arg PHP_VERSION=${{matrix.php}}
-            - name: Push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
-              run: docker image push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
+              run: docker build --isolation=hyperv ${{env.os}} -t ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}} --build-arg PHP_VERSION=${{matrix.php}}
+            - name: Push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
+              run: docker image push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
     docker-linux:
         runs-on: ubuntu-24.04
+        env:
+            os: linux
         strategy:
             fail-fast: false
             matrix:
-                php: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"]
-                os: ["linux"]
+                include:
+                    - php: "7.4"
+                      debian: "bullseye"
+                    - php: "8.0"
+                      debian: "bullseye"
+                    - php: "8.1"
+                      debian: "bookworm"
+                    - php: "8.2"
+                      debian: "bookworm"
+                    - php: "8.3"
+                      debian: "bookworm"
+                    - php: "8.4"
+                      debian: "bookworm"
         steps:
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v4
@@ -68,15 +82,17 @@ jobs:
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
-            - name: Build and push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
+            - name: Build and push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
               uses: docker/build-push-action@v7
               with:
                   push: true
-                  tags: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{matrix.os}}
-                  platforms: ${{matrix.os}}/amd64
-                  context: "{{defaultContext}}:${{matrix.os}}"
+                  tags: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
+                  platforms: ${{env.os}}/amd64
+                  context: "{{defaultContext}}:${{env.os}}"
                   file: Dockerfile
-                  build-args: PHP_VERSION=${{matrix.php}}
+                  build-args: |
+                      PHP_VERSION=${{matrix.php}}
+                      DEBIAN=${{matrix.debian}}
                   provenance: false
     merge:
         runs-on: ubuntu-24.04
@@ -86,7 +102,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                php: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4"]
+                php: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]
         steps:
             - name: Login to Docker Hub
               uses: docker/login-action@v4
