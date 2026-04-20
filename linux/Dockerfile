@@ -1,5 +1,5 @@
-ARG PHP_VERSION=7.4
-ARG DEBIAN=bullseye
+ARG PHP_VERSION=8.2
+ARG DEBIAN=bookworm
 FROM php:${PHP_VERSION}-apache-${DEBIAN}
 ARG PHP_VERSION=7.4
 ENV PHP_VERSION=${PHP_VERSION}
@@ -24,7 +24,11 @@ RUN apt update \
  && rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
-    pecl install ds imagick; \
+    pecl channel-update pecl.php.net; \
+    if dpkg --compare-versions "$PHP_VERSION" ge "8.2"; then \
+        pecl install ds; \
+        docker-php-ext-enable ds; \
+    fi; \
     if dpkg --compare-versions "$PHP_VERSION" ge "8.4"; then \
         pecl install imap; \
         docker-php-ext-enable imap; \
@@ -32,10 +36,11 @@ RUN set -eux; \
         docker-php-ext-configure imap --with-kerberos --with-imap-ssl; \
         docker-php-ext-install imap; \
     fi; \
+    pecl install imagick; \
     if dpkg --compare-versions "$PHP_VERSION" ge "8.5"; then \
-        docker-php-ext-enable ds imagick; \
+        docker-php-ext-enable imagick; \
     else \
-        docker-php-ext-enable opcache ds imagick; \
+        docker-php-ext-enable imagick opcache; \
     fi; \
     docker-php-ext-install \
         exif \
@@ -73,7 +78,7 @@ RUN dpkg --add-architecture i386 \
     wine32 \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
- 
+
 # Firefox
 ARG FIREFOX_VERSION=145.0.2
 
