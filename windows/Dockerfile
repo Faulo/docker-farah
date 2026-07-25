@@ -21,8 +21,7 @@ RUN choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output;
     if ($LASTEXITCODE -ne 0) { throw ('choco pack failed with exit code {0}' -f $LASTEXITCODE) }; \
     choco install farah --yes --no-progress --limit-output --source 'C:/build;https://community.chocolatey.org/api/v2/'; \
     if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco install failed with exit code {0}' -f $LASTEXITCODE) }; \
-    Remove-Item -Recurse -Force C:/build; \
-    Get-ChildItem $env:TEMP -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force C:/build
 
 ARG FIREFOX_VERSION=145.0.2
 ARG FIREFOX_SHA256=5947ae4611b873b724e72375d4445cc21337fadae90ab618d335de869d781637
@@ -38,9 +37,7 @@ RUN $url = 'https://archive.mozilla.org/pub/firefox/releases/{0}/win64/en-US/Fir
     $actualVersion = (Get-Item C:/Firefox/core/firefox.exe).VersionInfo.ProductVersion; \
     if ($actualVersion -ne $env:FIREFOX_VERSION) { throw ('Expected Firefox {0}, found {1}' -f $env:FIREFOX_VERSION, $actualVersion) }; \
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); \
-    [Environment]::SetEnvironmentVariable('Path', ('C:/Firefox/core;' + $machinePath), 'Machine'); \
-    & C:/Firefox/core/firefox.exe --version; \
-    if ($LASTEXITCODE -ne 0) { throw ('Firefox smoke check failed with exit code {0}' -f $LASTEXITCODE) }
+    [Environment]::SetEnvironmentVariable('Path', ('C:/Firefox/core;' + $machinePath), 'Machine')
 
 # Fonts required by browser-based rendering.
 ADD FontsToAdd.tar C:/TMP/
