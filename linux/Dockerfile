@@ -1,29 +1,30 @@
-ARG PHP_VERSION=8.2
-ARG DEBIAN=bookworm
-FROM php:${PHP_VERSION}-apache-${DEBIAN}
 ARG PHP_VERSION=7.4
+ARG DEBIAN=bullseye
+FROM php:${PHP_VERSION}-apache-${DEBIAN}
+ARG PHP_VERSION
 ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR /var/www
 
-# PHP extensions
-RUN apt update \
- && apt install -y \
-    libcurl4-openssl-dev \
-    libxslt1-dev \
-    libzip-dev \
-    unzip \
-    libonig-dev \
-    libpng-dev \
-    libmagickwand-dev \
-    imagemagick \
+# Runtime dependencies
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     git \
-    libc-client-dev \
-    libkrb5-dev \
-    wget \
- && apt clean \
+    imagemagick \
+    unzip \
  && rm -rf /var/lib/apt/lists/*
 
+# PHP extensions
 RUN set -eux; \
+    savedAptMark="$(apt-mark showmanual)"; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        libc-client-dev \
+        libicu-dev \
+        libkrb5-dev \
+        libmagickwand-dev \
+        libpng-dev \
+        libxslt1-dev \
+        libzip-dev; \
     pecl channel-update pecl.php.net; \
     if dpkg --compare-versions "$PHP_VERSION" ge "8.2"; then \
         pecl install ds; \
@@ -49,7 +50,18 @@ RUN set -eux; \
         sockets \
         mysqli \
         intl \
-        zip
+        zip; \
+    apt-mark auto '.*' > /dev/null; \
+    [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark > /dev/null; \
+    find /usr/local -type f -executable -exec ldd '{}' ';' \
+        | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
+        | sort -u \
+        | xargs -rt dpkg-query --search \
+        | awk 'sub(":$", "", $1) { print $1 }' \
+        | sort -u \
+        | xargs -r apt-mark manual; \
+    apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
+    rm -rf /tmp/pear /var/lib/apt/lists/*
 
 COPY imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
@@ -73,18 +85,22 @@ RUN php -v \
 
 # Wine
 RUN dpkg --add-architecture i386 \
- && apt update \
- && apt install -y \
+ && apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    wine \
     wine32 \
- && apt clean \
  && rm -rf /var/lib/apt/lists/*
 
 # Firefox
 ARG FIREFOX_VERSION=145.0.2
+ARG FIREFOX_SHA256=b35e92aec8cbcf627fa3dcf4e865b0de977cc66e1a3593d91b6e5ae945d1f0b9
 
 RUN set -eux; \
+    curl --fail --location --retry 3 \
+        "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.deb" \
+        --output /tmp/firefox.deb; \
+    echo "${FIREFOX_SHA256}  /tmp/firefox.deb" | sha256sum -c -; \
     apt-get update; \
-    wget "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.deb" -O /tmp/firefox.deb; \
-    apt-get install -y /tmp/firefox.deb; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /tmp/firefox.deb; \
     rm -f /tmp/firefox.deb; \
     rm -rf /var/lib/apt/lists/*
