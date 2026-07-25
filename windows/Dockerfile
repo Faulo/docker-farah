@@ -27,20 +27,19 @@ RUN choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output;
 ARG FIREFOX_VERSION=145.0.2
 ARG FIREFOX_SHA256=5947ae4611b873b724e72375d4445cc21337fadae90ab618d335de869d781637
 
-# The native installer works on Server Core and registers Firefox for geckodriver.
+# Extract the browser without installing shortcuts, services, or update tasks.
 RUN $url = 'https://archive.mozilla.org/pub/firefox/releases/{0}/win64/en-US/Firefox%20Setup%20{0}.exe' -f $env:FIREFOX_VERSION; \
     Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile C:/firefox-installer.exe; \
     $actualHash = (Get-FileHash C:/firefox-installer.exe -Algorithm SHA256).Hash; \
     if ($actualHash -ne $env:FIREFOX_SHA256) { throw ('Firefox SHA-256 mismatch: {0}' -f $actualHash) }; \
-    $arguments = '/S', '/InstallDirectoryPath=C:/Firefox', '/TaskbarShortcut=false', '/DesktopShortcut=false', '/StartMenuShortcut=false', '/PrivateBrowsingShortcut=false', '/MaintenanceService=false', '/RegisterDefaultAgent=false', '/PreventRebootRequired=true', '/OptionalExtensions=false'; \
-    $process = Start-Process C:/firefox-installer.exe -ArgumentList $arguments -Wait -PassThru; \
-    if ($process.ExitCode -ne 0) { throw ('Firefox installation failed with exit code {0}' -f $process.ExitCode) }; \
+    $process = Start-Process C:/firefox-installer.exe -ArgumentList '/ExtractDir=C:/Firefox' -Wait -PassThru; \
+    if ($process.ExitCode -ne 0) { throw ('Firefox extraction failed with exit code {0}' -f $process.ExitCode) }; \
     Remove-Item -Force C:/firefox-installer.exe; \
-    $actualVersion = (Get-Item C:/Firefox/firefox.exe).VersionInfo.ProductVersion; \
+    $actualVersion = (Get-Item C:/Firefox/core/firefox.exe).VersionInfo.ProductVersion; \
     if ($actualVersion -ne $env:FIREFOX_VERSION) { throw ('Expected Firefox {0}, found {1}' -f $env:FIREFOX_VERSION, $actualVersion) }; \
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); \
-    [Environment]::SetEnvironmentVariable('Path', ('C:/Firefox;' + $machinePath), 'Machine'); \
-    & C:/Firefox/firefox.exe --version; \
+    [Environment]::SetEnvironmentVariable('Path', ('C:/Firefox/core;' + $machinePath), 'Machine'); \
+    & C:/Firefox/core/firefox.exe --version; \
     if ($LASTEXITCODE -ne 0) { throw ('Firefox smoke check failed with exit code {0}' -f $LASTEXITCODE) }
 
 # Fonts required by browser-based rendering.
