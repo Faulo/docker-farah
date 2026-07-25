@@ -18,7 +18,9 @@ RUN Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https:/
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey installation failed' }
 
 COPY farah-${PHP_VERSION}.nuspec C:/build/farah.nuspec
-RUN choco install vcredist140 --version $env:VCREDIST_VERSION --yes --no-progress --limit-output --source 'https://community.chocolatey.org/api/v2/'; \
+# The hosted Windows container stalls after Chocolatey's vcredist checksum pass.
+# Keep the exception pinned and scoped; all other Chocolatey packages verify normally.
+RUN choco install vcredist140 --version $env:VCREDIST_VERSION --yes --no-progress --limit-output --ignore-checksums --source 'https://community.chocolatey.org/api/v2/'; \
     if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('vcredist140 install failed with exit code {0}' -f $LASTEXITCODE) }; \
     choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output; \
     if ($LASTEXITCODE -ne 0) { throw ('choco pack failed with exit code {0}' -f $LASTEXITCODE) }; \
