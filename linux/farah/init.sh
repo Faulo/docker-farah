@@ -34,4 +34,4 @@ case "$COMPOSER_UPDATE" in
     ;;
 esac
 
-apache2-foreground -DSERVER_NAME=$SERVER_NAME
+exec apache2-foreground -DSERVER_NAME=$SERVER_NAME
