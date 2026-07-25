@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-ltsc2019
 SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell", "-NonInteractive", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 ARG PHP_VERSION=7.4
+ARG VCREDIST_VERSION=14.50.35719
 
 ENV PHP_VERSION=${PHP_VERSION} \
     PHP_INI_SCAN_DIR=C:\\tools\\php \
@@ -17,7 +18,9 @@ RUN Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https:/
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey installation failed' }
 
 COPY farah-${PHP_VERSION}.nuspec C:/build/farah.nuspec
-RUN choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output; \
+RUN choco install vcredist140 --version $env:VCREDIST_VERSION --yes --no-progress --limit-output --source 'https://community.chocolatey.org/api/v2/'; \
+    if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('vcredist140 install failed with exit code {0}' -f $LASTEXITCODE) }; \
+    choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output; \
     if ($LASTEXITCODE -ne 0) { throw ('choco pack failed with exit code {0}' -f $LASTEXITCODE) }; \
     choco install farah --yes --no-progress --limit-output --source 'C:/build;https://community.chocolatey.org/api/v2/'; \
     if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco install failed with exit code {0}' -f $LASTEXITCODE) }; \
