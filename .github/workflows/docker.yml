@@ -15,10 +15,6 @@ on:
 permissions:
     contents: read
 
-concurrency:
-    group: docker-publish-${{ github.ref }}
-    cancel-in-progress: false
-
 jobs:
     docker-windows:
         runs-on: windows-2022
