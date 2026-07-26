@@ -44,7 +44,6 @@ jobs:
 
         uses: Faulo/workflows-docker/.github/workflows/publish.yml@v1
         with:
-            image: farah
             tag: ${{matrix.variant.tag}}
             build_args: ${{toJSON(matrix.variant.build_args)}}
         secrets:
