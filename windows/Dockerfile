@@ -100,10 +100,19 @@ COPY php.ini C:/tools/php/custom.ini
 RUN $phpDir = Split-Path (Get-Command php | Select-Object -ExpandProperty Source); \
     Copy-Item -Path C:/tools/php/ext/*.dll -Destination (Join-Path $phpDir 'ext') -Force; \
     Add-Content -Path C:/tools/php/custom.ini -Value (Get-Content C:/tools/php/ext/php.ini -Raw); \
+    $composerDir = Split-Path (Get-Command composer | Select-Object -ExpandProperty Source); \
+    $composerShim = Join-Path $composerDir 'composer.exe'; \
+    $shimOutputArg = '--output=' + $composerShim; \
+    $shimPathArg = '--path=' + (Join-Path $phpDir 'php.exe'); \
+    $shimCommandArg = '--command=' + (Join-Path $composerDir 'composer.phar'); \
+    C:/ProgramData/chocolatey/tools/shimgen.exe $shimOutputArg $shimPathArg $shimCommandArg; \
+    if ($LASTEXITCODE -ne 0) { throw ('Creating composer.exe failed with exit code {0}' -f $LASTEXITCODE) }; \
     php -v; \
     if ($LASTEXITCODE -ne 0) { throw ('php -v failed with exit code {0}' -f $LASTEXITCODE) }; \
     php -m; \
-    if ($LASTEXITCODE -ne 0) { throw ('php -m failed with exit code {0}' -f $LASTEXITCODE) }
+    if ($LASTEXITCODE -ne 0) { throw ('php -m failed with exit code {0}' -f $LASTEXITCODE) }; \
+    & $composerShim --version; \
+    if ($LASTEXITCODE -ne 0) { throw ('composer.exe failed with exit code {0}' -f $LASTEXITCODE) }
 
 # Farah
 COPY farah C:/farah
