@@ -51,7 +51,7 @@ RUN $fontRegistry = 'HKLM:/SOFTWARE/Microsoft/Windows NT/CurrentVersion/Fonts'; 
     Remove-Item -Recurse -Force C:/TMP
 
 # Install only the selected PHP version after the shared layers are cached.
-ARG PHP_VERSION=7.4
+ARG PHP_VERSION=8.2
 ENV PHP_VERSION=${PHP_VERSION} \
     PHP_INI_SCAN_DIR=C:\\tools\\php \
     COMPOSER_ALLOW_SUPERUSER=1 \
