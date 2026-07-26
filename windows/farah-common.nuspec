@@ -10,6 +10,7 @@
       <dependency id="vcredist140" version="[14.50.35719]" />
       <dependency id="git" />
       <dependency id="7zip" />
+      <dependency id="unzip" />
       <dependency id="curl" />
       <dependency id="imagemagick" />
     </dependencies>
