@@ -73,6 +73,18 @@ CMD ["/usr/share/farah/init.sh"]
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER=1
+ARG COMPOSER_DEV_PUB_SHA256=2b2df89fb2581e669b4668b451097d4a03f4dc2d7a06df197554064494a90a31
+ARG COMPOSER_TAGS_PUB_SHA256=d8f3e350437bf3b5342dbf046064ebd1f017ebc720955433194360a01cfd074f
+RUN set -eux; \
+    composerHome="$(composer config --global home)"; \
+    curl --fail --location --retry 3 https://composer.github.io/snapshots.pub --output /tmp/keys.dev.pub; \
+    curl --fail --location --retry 3 https://composer.github.io/releases.pub --output /tmp/keys.tags.pub; \
+    echo "${COMPOSER_DEV_PUB_SHA256}  /tmp/keys.dev.pub" | sha256sum -c -; \
+    echo "${COMPOSER_TAGS_PUB_SHA256}  /tmp/keys.tags.pub" | sha256sum -c -; \
+    install -d -m 700 "$composerHome"; \
+    install -m 600 /tmp/keys.dev.pub "$composerHome/keys.dev.pub"; \
+    install -m 600 /tmp/keys.tags.pub "$composerHome/keys.tags.pub"; \
+    rm -f /tmp/keys.dev.pub /tmp/keys.tags.pub
 
 # Apache
 ENV SERVER_NAME=localhost

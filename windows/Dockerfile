@@ -67,6 +67,19 @@ RUN choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output;
     if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco install farah failed with exit code {0}' -f $LASTEXITCODE) }; \
     Remove-Item -Recurse -Force C:/packages, C:/build
 
+# Composer's key update is interactive, so install the verified official keys.
+ARG COMPOSER_DEV_PUB_SHA256=2B2DF89FB2581E669B4668B451097D4A03F4DC2D7A06DF197554064494A90A31
+ARG COMPOSER_TAGS_PUB_SHA256=D8F3E350437BF3B5342DBF046064EBD1F017EBC720955433194360A01CFD074F
+RUN $composerHome = (composer config --global home).Trim(); \
+    if ($LASTEXITCODE -ne 0) { throw ('composer config failed with exit code {0}' -f $LASTEXITCODE) }; \
+    New-Item -ItemType Directory -Path $composerHome -Force | Out-Null; \
+    Invoke-WebRequest -UseBasicParsing -Uri https://composer.github.io/snapshots.pub -OutFile (Join-Path $composerHome 'keys.dev.pub'); \
+    Invoke-WebRequest -UseBasicParsing -Uri https://composer.github.io/releases.pub -OutFile (Join-Path $composerHome 'keys.tags.pub'); \
+    $devKeyHash = (Get-FileHash (Join-Path $composerHome 'keys.dev.pub') -Algorithm SHA256).Hash; \
+    if ($devKeyHash -ne $env:COMPOSER_DEV_PUB_SHA256) { throw ('Composer dev key SHA-256 mismatch: {0}' -f $devKeyHash) }; \
+    $tagsKeyHash = (Get-FileHash (Join-Path $composerHome 'keys.tags.pub') -Algorithm SHA256).Hash; \
+    if ($tagsKeyHash -ne $env:COMPOSER_TAGS_PUB_SHA256) { throw ('Composer tags key SHA-256 mismatch: {0}' -f $tagsKeyHash) }
+
 # Apache
 COPY apache.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/custom.conf
 COPY php-${PHP_VERSION}.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/php.conf
