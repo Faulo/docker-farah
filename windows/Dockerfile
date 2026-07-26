@@ -4,6 +4,9 @@ SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell", "-NonIntera
 
 ARG PHP_VERSION=7.4
 ARG VCREDIST_VERSION=14.50.35719
+ARG VCREDIST_X64_SHA256=8995548DFFFCDE7C49987029C764355612BA6850EE09A7B6F0FDDC85BDC5C280
+ARG VCREDIST_X86_SHA256=E7267C1BDF9237C0B4A28CF027C382B97AA909934F84F1C92D3FB9F04173B33E
+ARG WIX_SHA256=2C1888D5D1DBA377FC7FA14444CF556963747FF9A0A289A3599CF09DA03B9E2E
 
 ENV PHP_VERSION=${PHP_VERSION} \
     PHP_INI_SCAN_DIR=C:\\tools\\php \
@@ -17,11 +20,15 @@ EXPOSE 80
 RUN Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')); \
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey installation failed' }
 
+# The redistributable installer hangs under Hyper-V isolation. Deploy its
+# verified DLL payloads directly and provide matching local package metadata.
+COPY Install-VCRuntime.ps1 C:/build/Install-VCRuntime.ps1
+RUN C:/build/Install-VCRuntime.ps1
+
 COPY farah-${PHP_VERSION}.nuspec C:/build/farah.nuspec
-# The hosted Windows container stalls after Chocolatey's vcredist checksum pass.
-# Keep the exception pinned and scoped; all other Chocolatey packages verify normally.
-RUN choco install vcredist140 --version $env:VCREDIST_VERSION --yes --no-progress --limit-output --ignore-checksums --source 'https://community.chocolatey.org/api/v2/'; \
-    if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('vcredist140 install failed with exit code {0}' -f $LASTEXITCODE) }; \
+COPY vcredist140.nuspec C:/build/vcredist140.nuspec
+RUN choco pack C:/build/vcredist140.nuspec --output-directory C:/build --limit-output; \
+    if ($LASTEXITCODE -ne 0) { throw ('choco pack vcredist140 failed with exit code {0}' -f $LASTEXITCODE) }; \
     choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output; \
     if ($LASTEXITCODE -ne 0) { throw ('choco pack failed with exit code {0}' -f $LASTEXITCODE) }; \
     choco install farah --yes --no-progress --limit-output --source 'C:/build;https://community.chocolatey.org/api/v2/'; \
@@ -46,7 +53,11 @@ RUN $url = 'https://archive.mozilla.org/pub/firefox/releases/{0}/win64/en-US/Fir
 
 # Fonts required by browser-based rendering.
 ADD FontsToAdd.tar C:/TMP/
-RUN C:/TMP/Add-Font.ps1 C:/TMP/Fonts; \
+RUN $fontRegistry = 'HKLM:/SOFTWARE/Microsoft/Windows NT/CurrentVersion/Fonts'; \
+    Get-ChildItem C:/TMP/Fonts -File | ForEach-Object { \
+        Copy-Item $_.FullName (Join-Path $env:WINDIR ('Fonts/' + $_.Name)) -Force; \
+        New-ItemProperty -Path $fontRegistry -Name ($_.BaseName + ' (TrueType)') -Value $_.Name -PropertyType String -Force | Out-Null \
+    }; \
     Remove-Item -Recurse -Force C:/TMP
 
 # Apache

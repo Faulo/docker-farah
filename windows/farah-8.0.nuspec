@@ -8,10 +8,11 @@
     <dependencies>
       <dependency id="apache-httpd" version="[2.4,3.0)" />
       <dependency id="php" version="[8.0,8.1)" />
-	  <dependency id="composer" />
-	  <dependency id="git" />
-	  <dependency id="7zip" />
-	  <dependency id="curl" />
+      <dependency id="vcredist140" version="[14.50.35719]" />
+      <dependency id="composer" />
+      <dependency id="git" />
+      <dependency id="7zip" />
+      <dependency id="curl" />
       <dependency id="imagemagick" />
     </dependencies>
   </metadata>

@@ -1,0 +1,9 @@
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>vcredist140</id>
+    <version>14.50.35719</version>
+    <title>Microsoft Visual C++ Runtime (container deployment)</title>
+    <authors>Microsoft</authors>
+    <description>Records the checksum-verified Visual C++ runtime deployed by the Windows image build.</description>
+  </metadata>
+</package>
