@@ -16,139 +16,35 @@ permissions:
     contents: read
 
 jobs:
-    docker-windows:
-        runs-on: windows-2022
-        timeout-minutes: 180
-        env:
-            os: windows
+    publish:
         strategy:
             fail-fast: false
             # Reuse shared layers and avoid Chocolatey feed contention.
             max-parallel: 1
             matrix:
-                php: ["8.2", "8.3", "8.4", "8.5"]
-        steps:
-            - name: Ensure Docker is running
-              shell: pwsh
-              run: |
-                  $service = Get-Service docker -ErrorAction Stop
-                  if ($service.Status -ne 'Running') {
-                    Start-Service docker
-                  }
+                variant:
+                    - tag: "8.2"
+                      build_args:
+                          PHP_VERSION: "8.2"
+                          DEBIAN: bookworm
+                    - tag: "8.3"
+                      build_args:
+                          PHP_VERSION: "8.3"
+                          DEBIAN: bookworm
+                    - tag: "8.4"
+                      build_args:
+                          PHP_VERSION: "8.4"
+                          DEBIAN: bookworm
+                    - tag: "8.5"
+                      build_args:
+                          PHP_VERSION: "8.5"
+                          DEBIAN: bookworm
 
-                  $ready = $false
-                  for ($attempt = 1; $attempt -le 24; $attempt++) {
-                    docker info *> $null
-                    if ($LASTEXITCODE -eq 0) {
-                      $ready = $true
-                      break
-                    }
-
-                    Start-Sleep -Seconds 5
-                  }
-
-                  if (-not $ready) {
-                    Get-Service docker
-                    throw "Docker daemon not ready after 120 seconds"
-                  }
-
-                  docker version
-            - name: Checkout
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-            - name: Login to Docker Hub
-              uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4
-              with:
-                  username: ${{ secrets.DOCKERHUB_USERNAME }}
-                  password: ${{ secrets.DOCKERHUB_TOKEN }}
-            - name: Build ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
-              run: >-
-                  docker build --isolation=hyperv
-                  --file ${{env.os}}/Dockerfile
-                  --tag ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
-                  --build-arg PHP_VERSION=${{matrix.php}}
-                  ${{env.os}}
-            - name: Push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
-              run: docker image push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
-
-    docker-linux:
-        runs-on: ubuntu-24.04
-        timeout-minutes: 90
-        env:
-            os: linux
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - php: "8.2"
-                      debian: "bookworm"
-                    - php: "8.3"
-                      debian: "bookworm"
-                    - php: "8.4"
-                      debian: "bookworm"
-                    - php: "8.5"
-                      debian: "bookworm"
-        steps:
-            - name: Checkout
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
-            - name: Login to Docker Hub
-              uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4
-              with:
-                  username: ${{ secrets.DOCKERHUB_USERNAME }}
-                  password: ${{ secrets.DOCKERHUB_TOKEN }}
-            - name: Build and push ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
-              uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
-              with:
-                  context: ${{env.os}}
-                  file: ${{env.os}}/Dockerfile
-                  push: true
-                  pull: true
-                  tags: ${{secrets.DOCKERHUB_USERNAME}}/farah:${{matrix.php}}-${{env.os}}
-                  platforms: ${{env.os}}/amd64
-                  build-args: |
-                      PHP_VERSION=${{matrix.php}}
-                      DEBIAN=${{matrix.debian}}
-                  cache-from: type=gha,scope=farah-${{matrix.php}}-${{env.os}}
-                  cache-to: type=gha,mode=max,scope=farah-${{matrix.php}}-${{env.os}}
-                  provenance: mode=max
-                  sbom: true
-
-    merge:
-        runs-on: ubuntu-24.04
-        timeout-minutes: 15
-        needs:
-            - docker-windows
-            - docker-linux
-        strategy:
-            fail-fast: false
-            matrix:
-                php: ["8.2", "8.3", "8.4", "8.5"]
-        steps:
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
-            - name: Login to Docker Hub
-              uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4
-              with:
-                  username: ${{ secrets.DOCKERHUB_USERNAME }}
-                  password: ${{ secrets.DOCKERHUB_TOKEN }}
-            - name: Merge manifests
-              env:
-                  IMAGE: ${{secrets.DOCKERHUB_USERNAME}}/farah
-                  PHP_VERSION: ${{matrix.php}}
-              run: |
-                  docker buildx imagetools create \
-                    --tag "${IMAGE}:${PHP_VERSION}" \
-                    "${IMAGE}:${PHP_VERSION}-linux" \
-                    "${IMAGE}:${PHP_VERSION}-windows"
-            - name: Verify merged manifest
-              env:
-                  IMAGE: ${{secrets.DOCKERHUB_USERNAME}}/farah
-                  PHP_VERSION: ${{matrix.php}}
-              run: |
-                  manifest="$(docker buildx imagetools inspect "${IMAGE}:${PHP_VERSION}" --raw)"
-                  jq -e '
-                    any(.manifests[]; .platform.os == "linux" and .platform.architecture == "amd64") and
-                    any(.manifests[]; .platform.os == "windows" and .platform.architecture == "amd64")
-                  ' <<< "${manifest}"
-                  docker buildx imagetools inspect "${IMAGE}:${PHP_VERSION}"
+        uses: Faulo/workflows-docker/.github/workflows/publish.yml@v1
+        with:
+            image: farah
+            tag: ${{matrix.variant.tag}}
+            build_args: ${{toJSON(matrix.variant.build_args)}}
+        secrets:
+            DOCKERHUB_USERNAME: ${{secrets.DOCKERHUB_USERNAME}}
+            DOCKERHUB_TOKEN: ${{secrets.DOCKERHUB_TOKEN}}
