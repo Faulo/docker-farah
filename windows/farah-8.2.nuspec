@@ -6,14 +6,9 @@
     <authors>Daniel Schulz</authors>
     <description>Files and Resources and Hypertext</description>
     <dependencies>
-      <dependency id="apache-httpd" version="[2.4,3.0)" />
+      <dependency id="farah-common" version="[1.0.0]" />
       <dependency id="php" version="[8.2,8.3)" />
-      <dependency id="vcredist140" version="[14.50.35719]" />
       <dependency id="composer" />
-      <dependency id="git" />
-      <dependency id="7zip" />
-      <dependency id="curl" />
-      <dependency id="imagemagick" />
     </dependencies>
   </metadata>
 </package>

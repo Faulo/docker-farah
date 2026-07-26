@@ -1,0 +1,17 @@
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>farah-common</id>
+    <version>1.0.0</version>
+    <title>Slothsoft's Farah CMS common tools</title>
+    <authors>Daniel Schulz</authors>
+    <description>PHP-independent tools used by Farah.</description>
+    <dependencies>
+      <dependency id="apache-httpd" version="[2.4,3.0)" />
+      <dependency id="vcredist140" version="[14.50.35719]" />
+      <dependency id="git" />
+      <dependency id="7zip" />
+      <dependency id="curl" />
+      <dependency id="imagemagick" />
+    </dependencies>
+  </metadata>
+</package>

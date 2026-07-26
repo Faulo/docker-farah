@@ -27,6 +27,8 @@ jobs:
             os: windows
         strategy:
             fail-fast: false
+            # Reuse shared layers and avoid Chocolatey feed contention.
+            max-parallel: 1
             matrix:
                 php: ["8.2", "8.3", "8.4", "8.5"]
         steps:
