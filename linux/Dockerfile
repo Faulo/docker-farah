@@ -1,5 +1,5 @@
-ARG PHP_VERSION=7.4
-ARG DEBIAN=bullseye
+ARG PHP_VERSION=8.2
+ARG DEBIAN=bookworm
 FROM php:${PHP_VERSION}-apache-${DEBIAN}
 ARG PHP_VERSION
 ENV PHP_VERSION=${PHP_VERSION}
@@ -95,7 +95,9 @@ COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
 RUN php -v \
  && php -m \
- && php --ri imap
+ && php --ri imap \
+ && openssl version | grep -E '^OpenSSL 3\.' \
+ && curl --version | grep -E 'OpenSSL/3\.'
 
 # Wine
 RUN dpkg --add-architecture i386 \

@@ -111,6 +111,10 @@ RUN $phpDir = Split-Path (Get-Command php | Select-Object -ExpandProperty Source
     if ($LASTEXITCODE -ne 0) { throw ('php -v failed with exit code {0}' -f $LASTEXITCODE) }; \
     php -m; \
     if ($LASTEXITCODE -ne 0) { throw ('php -m failed with exit code {0}' -f $LASTEXITCODE) }; \
+    $phpInfo = php -i; \
+    if ($LASTEXITCODE -ne 0) { throw ('php -i failed with exit code {0}' -f $LASTEXITCODE) }; \
+    if (-not ($phpInfo -match '^OpenSSL Library Version => OpenSSL 3\.')) { throw 'PHP is not using OpenSSL 3' }; \
+    if (-not ($phpInfo -match '^SSL Version => OpenSSL/3\.')) { throw 'PHP curl is not using OpenSSL 3' }; \
     & $composerShim --version; \
     if ($LASTEXITCODE -ne 0) { throw ('composer.exe failed with exit code {0}' -f $LASTEXITCODE) }
 
