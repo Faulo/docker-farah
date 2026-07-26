@@ -53,7 +53,7 @@ RUN set -eux; \
         zip; \
     apt-mark auto '.*' > /dev/null; \
     [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark > /dev/null; \
-    find /usr/local -type f -executable -exec ldd '{}' ';' \
+    find /usr/local -type f \( -executable -o -name '*.so' \) -exec ldd '{}' ';' \
         | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
         | sort -u \
         | xargs -rt dpkg-query --search \
@@ -81,7 +81,8 @@ COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 COPY apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
 RUN php -v \
- && php -m
+ && php -m \
+ && php --ri imap
 
 # Wine
 RUN dpkg --add-architecture i386 \
