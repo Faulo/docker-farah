@@ -1,3 +1,16 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0-windowsservercore-ltsc2019 AS farah-build
+
+WORKDIR C:/source
+
+COPY common/Farah/ .
+
+RUN dotnet publish Farah.csproj \
+        --configuration Release \
+        --runtime win-x64 \
+        --self-contained true \
+        --property:PublishSingleFile=true \
+        --output C:/out
+
 FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-ltsc2019
 
 SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell", "-NonInteractive", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
@@ -14,11 +27,11 @@ RUN Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https:/
 
 # The redistributable installer hangs under Hyper-V isolation. Deploy its
 # verified DLL payloads directly and provide matching local package metadata.
-COPY Install-VCRuntime.ps1 C:/build/Install-VCRuntime.ps1
+COPY windows/Install-VCRuntime.ps1 C:/build/Install-VCRuntime.ps1
 RUN C:/build/Install-VCRuntime.ps1
 
-COPY vcredist140.nuspec C:/build/vcredist140.nuspec
-COPY farah-common.nuspec C:/build/farah-common.nuspec
+COPY windows/vcredist140.nuspec C:/build/vcredist140.nuspec
+COPY windows/farah-common.nuspec C:/build/farah-common.nuspec
 RUN New-Item -ItemType Directory -Path C:/packages -Force | Out-Null; \
     choco pack C:/build/vcredist140.nuspec --output-directory C:/packages --limit-output; \
     if ($LASTEXITCODE -ne 0) { throw ('choco pack vcredist140 failed with exit code {0}' -f $LASTEXITCODE) }; \
@@ -42,7 +55,7 @@ RUN $url = 'https://archive.mozilla.org/pub/firefox/releases/{0}/win64/en-US/Fir
     [Environment]::SetEnvironmentVariable('Path', ('C:/Firefox/core;' + $machinePath), 'Machine')
 
 # Fonts required by browser-based rendering.
-ADD FontsToAdd.tar C:/TMP/
+ADD windows/FontsToAdd.tar C:/TMP/
 RUN $fontRegistry = 'HKLM:/SOFTWARE/Microsoft/Windows NT/CurrentVersion/Fonts'; \
     Get-ChildItem C:/TMP/Fonts -File | ForEach-Object { \
         Copy-Item $_.FullName (Join-Path $env:WINDIR ('Fonts/' + $_.Name)) -Force; \
@@ -60,7 +73,7 @@ ENV PHP_VERSION=${PHP_VERSION} \
 WORKDIR C:/www
 EXPOSE 80
 
-COPY farah-${PHP_VERSION}.nuspec C:/build/farah.nuspec
+COPY windows/farah-${PHP_VERSION}.nuspec C:/build/farah.nuspec
 RUN choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output; \
     if ($LASTEXITCODE -ne 0) { throw ('choco pack farah failed with exit code {0}' -f $LASTEXITCODE) }; \
     choco install farah --yes --no-progress --limit-output --source 'C:/packages;C:/build;https://community.chocolatey.org/api/v2/'; \
@@ -81,9 +94,9 @@ RUN $composerHome = (composer config --global home).Trim(); \
     if ($tagsKeyHash -ne $env:COMPOSER_TAGS_PUB_SHA256) { throw ('Composer tags key SHA-256 mismatch: {0}' -f $tagsKeyHash) }
 
 # Apache
-COPY apache.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/custom.conf
-COPY php-${PHP_VERSION}.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/php.conf
-COPY mod_fcgid.so C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/modules/mod_fcgid.so
+COPY windows/apache.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/custom.conf
+COPY windows/php-${PHP_VERSION}.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/php.conf
+COPY windows/mod_fcgid.so C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/modules/mod_fcgid.so
 RUN $httpdConfig = 'C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/httpd.conf'; \
     $includes = [Environment]::NewLine + 'Include conf/extra/custom.conf' + [Environment]::NewLine + 'Include conf/extra/php.conf'; \
     for ($attempt = 1; $attempt -le 30; $attempt++) { \
@@ -95,8 +108,8 @@ RUN $httpdConfig = 'C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/con
     }
 
 # PHP extensions not supplied by the Chocolatey PHP package.
-COPY ext-${PHP_VERSION}/ C:/tools/php/ext/
-COPY php.ini C:/tools/php/custom.ini
+COPY windows/ext-${PHP_VERSION}/ C:/tools/php/ext/
+COPY windows/php.ini C:/tools/php/custom.ini
 RUN $phpDir = Split-Path (Get-Command php | Select-Object -ExpandProperty Source); \
     Copy-Item -Path C:/tools/php/ext/*.dll -Destination (Join-Path $phpDir 'ext') -Force; \
     Add-Content -Path C:/tools/php/custom.ini -Value (Get-Content C:/tools/php/ext/php.ini -Raw); \
@@ -119,6 +132,7 @@ RUN $phpDir = Split-Path (Get-Command php | Select-Object -ExpandProperty Source
     if ($LASTEXITCODE -ne 0) { throw ('composer.exe failed with exit code {0}' -f $LASTEXITCODE) }
 
 # Farah
-COPY farah C:/farah
+COPY --from=farah-build C:/out/farah.exe C:/farah/farah.exe
+COPY windows/farah/index.php C:/farah/index.php
 RUN git config --global --add safe.directory *
-CMD ["C:/farah/init.bat"]
+CMD ["C:/farah/farah.exe"]

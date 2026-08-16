@@ -1,5 +1,19 @@
 ARG PHP_VERSION=8.2
 ARG DEBIAN=bookworm
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS farah-build
+
+WORKDIR /source
+
+COPY common/Farah/ .
+
+RUN dotnet publish Farah.csproj \
+        --configuration Release \
+        --runtime linux-x64 \
+        --self-contained true \
+        --property:PublishSingleFile=true \
+        --output /out
+
 FROM php:${PHP_VERSION}-apache-${DEBIAN}
 ARG PHP_VERSION
 ENV PHP_VERSION=${PHP_VERSION}
@@ -64,12 +78,13 @@ RUN set -eux; \
     apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
     rm -rf /tmp/pear /var/lib/apt/lists/*
 
-COPY imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
+COPY linux/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
 # Farah
-COPY --chmod=777 farah /usr/share/farah
+COPY --from=farah-build --chmod=755 /out/farah /usr/share/farah/farah.exe
+COPY --chmod=777 linux/farah/index.php /usr/share/farah/index.php
 RUN git config --global --add safe.directory *
-CMD ["/usr/share/farah/init.sh"]
+CMD ["/usr/share/farah/farah.exe"]
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -90,8 +105,8 @@ RUN set -eux; \
 # Apache
 ENV SERVER_NAME=localhost
 EXPOSE 80
-COPY php.ini /usr/local/etc/php/conf.d/custom.ini
-COPY apache.conf /etc/apache2/conf-available/custom.conf
+COPY linux/php.ini /usr/local/etc/php/conf.d/custom.ini
+COPY linux/apache.conf /etc/apache2/conf-available/custom.conf
 RUN a2enconf custom
 RUN php -v \
  && php -m \
