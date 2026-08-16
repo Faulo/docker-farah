@@ -9,9 +9,10 @@ Published tags support PHP 8.2 through 8.5.
 
 ## Runtime startup
 
-Both variants use the shared .NET 9 `farah.exe` launcher. Before handing off to
-Apache, the launcher reads the case-sensitive `COMPOSER_UPDATE` environment
-variable. It defaults to `install` and supports these modes:
+Both variants use the shared .NET 9 launcher: `/farah/farah` on Linux and
+`C:/farah/farah.exe` on Windows. Before handing off to Apache, the launcher
+reads the case-sensitive `COMPOSER_UPDATE` environment variable. It defaults
+to `install` and supports these modes:
 
 - `skip`
 - `install`

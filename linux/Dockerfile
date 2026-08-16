@@ -81,10 +81,10 @@ RUN set -eux; \
 COPY linux/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
 # Farah
-COPY --from=farah-build --chmod=755 /out/farah /usr/share/farah/farah.exe
-COPY --chmod=777 linux/farah/index.php /usr/share/farah/index.php
+COPY --from=farah-build --chmod=755 /out/farah /farah/farah
+COPY --chmod=777 linux/farah/index.php /farah/index.php
 RUN git config --global --add safe.directory *
-CMD ["/usr/share/farah/farah.exe"]
+CMD ["/farah/farah"]
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
