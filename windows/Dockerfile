@@ -138,6 +138,7 @@ RUN git config --global --add safe.directory *
 CMD ["C:/farah/farah.exe"]
 
 # PowerShell
+ARG POWERSHELL_VERSION=7.6.4
 ADD https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/PowerShell-${POWERSHELL_VERSION}-win-x64.zip C:/powershell.zip
 RUN $archive = 'C:/powershell.zip'; \
     $destination = 'C:/Program Files/PowerShell/7'; \
@@ -145,7 +146,7 @@ RUN $archive = 'C:/powershell.zip'; \
     Expand-Archive -LiteralPath $archive -DestinationPath $destination; \
     Remove-Item -LiteralPath $archive; \
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); \
-    [Environment]::SetEnvironmentVariable('Path', ('C:\godot;' + $destination + ';' + $machinePath), 'Machine')
+    [Environment]::SetEnvironmentVariable('Path', ($destination + ';' + $machinePath), 'Machine')
 RUN pwsh.exe -NoLogo -NoProfile -Command \
         'if ($PSVersionTable.PSVersion.ToString() -ne $env:POWERSHELL_VERSION) { exit 1 }'; \
     if ($LASTEXITCODE -ne 0) { throw 'PowerShell smoke check failed' }
