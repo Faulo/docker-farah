@@ -8,8 +8,8 @@ def candidateImage() {
     return "$DOCKER_NAMESPACE/$DOCKER_IMAGE:$DOCKER_TAG"
 }
 
-def curlCommand(container, arguments) {
-    return "docker exec ${container.id} curl ${arguments}"
+def curlCommand(containerId, arguments) {
+    return "docker exec ${containerId} curl ${arguments}"
 }
 
 def capture(command) {
@@ -19,32 +19,43 @@ def capture(command) {
     return bat(script: "@${command}", returnStdout: true).trim()
 }
 
-def responseStatus(container, path, retry = false) {
+def execute(command) {
+    if (isUnix()) {
+        sh command
+    } else {
+        bat "@${command}"
+    }
+}
+
+def responseStatus(containerId, path, retry = false) {
     def nullDevice = isUnix() ? '/dev/null' : 'NUL'
     def writeOut = isUnix() ? "'%{http_code}'" : '"%%{http_code}"'
     def retryArguments = retry ? '--retry 120 --retry-connrefused --retry-delay 1 ' : ''
     def arguments = "--silent --show-error ${retryArguments}--output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
-    return capture(curlCommand(container, arguments))
+    return capture(curlCommand(containerId, arguments))
 }
 
-def responseBody(container, path) {
-    return capture(curlCommand(container, "--fail --silent --show-error http://localhost${path}"))
+def responseBody(containerId, path) {
+    return capture(curlCommand(containerId, "--fail --silent --show-error http://localhost${path}"))
 }
 
 def testImage() {
-    docker.image(candidateImage()).withRun { container ->
-        responseStatus(container, '/', true)
+    def containerId = capture("docker run --detach ${candidateImage()}")
+    try {
+        responseStatus(containerId, '/', true)
 
         def phpInfoPath = '/slothsoft@farah/phpinfo'
-        assertValue(responseStatus(container, phpInfoPath), '200', "HTTP status for ${phpInfoPath}")
+        assertValue(responseStatus(containerId, phpInfoPath), '200', "HTTP status for ${phpInfoPath}")
 
-        def phpInfo = responseBody(container, phpInfoPath)
+        def phpInfo = responseBody(containerId, phpInfoPath)
         if (!phpInfo.contains('<title>PHP') || !phpInfo.contains('phpinfo()')) {
             error "${phpInfoPath} did not return HTML phpinfo output"
         }
 
-        assertValue(responseStatus(container, '/'), '404', 'HTTP status for /')
-        assertValue(responseStatus(container, '/AboutMe/'), '404', 'HTTP status for /AboutMe/')
+        assertValue(responseStatus(containerId, '/'), '404', 'HTTP status for /')
+        assertValue(responseStatus(containerId, '/AboutMe/'), '404', 'HTTP status for /AboutMe/')
+    } finally {
+        execute("docker rm --force --volumes ${containerId}")
     }
 }
 
