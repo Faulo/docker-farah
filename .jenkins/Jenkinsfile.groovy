@@ -30,8 +30,9 @@ def execute(command) {
 def responseStatus(containerId, path, retry = false) {
     def nullDevice = isUnix() ? '/dev/null' : 'NUL'
     def writeOut = isUnix() ? "'%{http_code}'" : '"%%{http_code}"'
-    def retryArguments = retry ? '--retry 120 --retry-connrefused --retry-delay 1 ' : ''
-    def arguments = "--silent --show-error ${retryArguments}--output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
+    def retryArguments = retry ? '--retry 30 --retry-connrefused --retry-delay 1 ' : ''
+    def errorArguments = retry ? '' : '--show-error '
+    def arguments = "--silent ${errorArguments}${retryArguments}--output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
     return capture(curlCommand(containerId, arguments))
 }
 
@@ -42,7 +43,12 @@ def responseBody(containerId, path) {
 def testImage() {
     def containerId = capture("docker run --detach ${candidateImage()}")
     try {
-        responseStatus(containerId, '/', true)
+        try {
+            responseStatus(containerId, '/', true)
+        } catch (Exception exception) {
+            execute("docker logs ${containerId}")
+            error "${candidateImage()} did not start serving HTTP"
+        }
 
         def phpInfoPath = '/slothsoft@farah/phpinfo'
         assertValue(responseStatus(containerId, phpInfoPath), '200', "HTTP status for ${phpInfoPath}")
