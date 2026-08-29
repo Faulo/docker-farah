@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 
 interface IProcessRunner {
@@ -18,11 +17,7 @@ sealed class ProcessRunner : IProcessRunner {
     }
 
     internal static ProcessStartInfo CreateStartInfo(string executable, IEnumerable<string> arguments, string workingDirectory) {
-        var start = new ProcessStartInfo {
-            FileName = executable,
-            UseShellExecute = false,
-            WorkingDirectory = workingDirectory
-        };
+        var start = new ProcessStartInfo { FileName = executable, UseShellExecute = false, WorkingDirectory = workingDirectory };
         foreach (string argument in arguments) {
             start.ArgumentList.Add(argument);
         }
@@ -31,8 +26,8 @@ sealed class ProcessRunner : IProcessRunner {
     }
 
     sealed class SignalForwarder : IDisposable {
-        readonly Process process;
         readonly PosixSignalRegistration interrupt;
+        readonly Process process;
         readonly PosixSignalRegistration quit;
         readonly PosixSignalRegistration terminate;
 

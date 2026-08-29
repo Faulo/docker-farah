@@ -76,11 +76,9 @@ public sealed class RuntimeSetupTests {
     sealed class FakeProcessRunner : IProcessRunner {
         readonly Queue<object> results;
 
-        public FakeProcessRunner(params object[] results) {
-            this.results = new Queue<object>(results);
-        }
+        public FakeProcessRunner(params object[] results) => this.results = new Queue<object>(results);
 
-        public List<ProcessCall> calls { get; } = new List<ProcessCall>();
+        public List<ProcessCall> calls { get; } = new();
 
         public int Run(string executable, IEnumerable<string> arguments, string workingDirectory, bool forwardTerminationSignals) {
             calls.Add(new ProcessCall(executable, arguments.ToArray(), workingDirectory, forwardTerminationSignals));

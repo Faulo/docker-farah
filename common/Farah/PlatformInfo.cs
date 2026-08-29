@@ -6,13 +6,7 @@ sealed class PlatformInfo {
         ? new PlatformInfo(
             @"C:\www",
             "powershell.exe",
-            new[] {
-                "-NoLogo",
-                "-NoProfile",
-                "-NonInteractive",
-                "-Command",
-                "Get-Content -LiteralPath (Join-Path $env:APPDATA 'Apache24/logs/error.log') -Wait -Tail 10"
-            },
+            new[] { "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Get-Content -LiteralPath (Join-Path $env:APPDATA 'Apache24/logs/error.log') -Wait -Tail 10" },
             false)
         : new PlatformInfo("/var/www", "apache2-foreground", Array.Empty<string>(), true);
 

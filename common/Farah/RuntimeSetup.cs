@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 sealed class RuntimeSetup {
@@ -31,7 +32,7 @@ sealed class RuntimeSetup {
             platform.forwardTerminationSignals);
     }
 
-    void RunComposer(System.Collections.Generic.IEnumerable<string> arguments) {
+    void RunComposer(IEnumerable<string> arguments) {
         try {
             int exitCode = processRunner.Run("composer", arguments, platform.composerWorkingDirectory, false);
             if (exitCode != 0) {
