@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
+namespace DockerFarah;
+
 sealed class RuntimeSetup {
     readonly TextWriter error;
     readonly TextWriter output;

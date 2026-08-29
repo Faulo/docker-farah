@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
+namespace DockerFarah;
+
 interface IProcessRunner {
     int Run(string executable, IEnumerable<string> arguments, string workingDirectory, bool forwardTerminationSignals);
 }
 
-sealed class ProcessRunner : IProcessRunner {
+sealed partial class ProcessRunner : IProcessRunner {
     public int Run(string executable, IEnumerable<string> arguments, string workingDirectory, bool forwardTerminationSignals) {
         using var process = Process.Start(CreateStartInfo(executable, arguments, workingDirectory)) ?? throw new InvalidOperationException("failed to start " + executable);
         using var signals = forwardTerminationSignals ? new SignalForwarder(process) : null;
@@ -48,7 +50,7 @@ sealed class ProcessRunner : IProcessRunner {
             context.Cancel = true;
             try {
                 if (!process.HasExited) {
-                    NativeMethods.Kill(process.Id, signal);
+                    _ = NativeMethods.Kill(process.Id, signal);
                 }
             } catch (InvalidOperationException) {
                 // The child exited between the signal and the status check.
@@ -56,8 +58,8 @@ sealed class ProcessRunner : IProcessRunner {
         }
     }
 
-    static class NativeMethods {
-        [DllImport("libc", EntryPoint = "kill", SetLastError = true)]
-        internal static extern int Kill(int processId, int signal);
+    static partial class NativeMethods {
+        [LibraryImport("libc", EntryPoint = "kill", SetLastError = true)]
+        internal static partial int Kill(int processId, int signal);
     }
 }

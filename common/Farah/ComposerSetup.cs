@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 
+namespace DockerFarah;
+
 sealed record ComposerPlan(IReadOnlyList<string>? arguments, string? message, bool warning);
 
 static class ComposerSetup {

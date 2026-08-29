@@ -1,10 +1,13 @@
 using System.Linq;
+using DockerFarah;
 using NUnit.Framework;
+
+namespace Farah.Tests;
 
 public sealed class ProcessRunnerTests {
     [Test]
     public void PreservesArgumentsWithoutManualQuoting() {
-        string[] arguments = { "plain", "with spaces", "a\"quote", @"trailing\\", string.Empty };
+        string[] arguments = ["plain", "with spaces", "a\"quote", @"trailing\\", string.Empty];
 
         var start = ProcessRunner.CreateStartInfo("tool", arguments, "work");
 

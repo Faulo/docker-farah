@@ -1,5 +1,7 @@
 using System;
 
+namespace DockerFarah;
+
 static class Program {
     static int Main() {
         try {

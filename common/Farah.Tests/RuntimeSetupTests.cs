@@ -2,9 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using DockerFarah;
 using NUnit.Framework;
 
+namespace Farah.Tests;
+
 public sealed class RuntimeSetupTests {
+    static readonly string[] apacheExecutables = ["apache2-foreground"];
+    static readonly string[] composerAndApacheExecutables = ["composer", "apache2-foreground"];
+    static readonly string[] serverArguments = ["-DSERVER_NAME=example.test"];
+    static readonly string[] stableComposerArguments = ["update", "--no-interaction", "--prefer-stable"];
+
     [Test]
     public void RunsComposerBeforeServer() {
         var runner = new FakeProcessRunner();
@@ -13,9 +21,13 @@ public sealed class RuntimeSetupTests {
         int exitCode = setup.Run("stable-dev", "example.test");
 
         Assert.That(exitCode, Is.Zero);
-        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(new[] { "composer", "apache2-foreground" }));
-        Assert.That(runner.calls[0].arguments, Is.EqualTo(new[] { "update", "--no-interaction", "--prefer-stable" }));
-        Assert.That(runner.calls[1].arguments, Is.EqualTo(new[] { "-DSERVER_NAME=example.test" }));
+        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(composerAndApacheExecutables));
+        Assert.That(runner.calls[0].arguments, Is.EqualTo(stableComposerArguments));
+        Assert.That(runner.calls[0].workingDirectory, Is.EqualTo("/var/www"));
+        Assert.That(runner.calls[0].forwardTerminationSignals, Is.False);
+        Assert.That(runner.calls[1].arguments, Is.EqualTo(serverArguments));
+        Assert.That(runner.calls[1].workingDirectory, Is.EqualTo("/var/www"));
+        Assert.That(runner.calls[1].forwardTerminationSignals, Is.True);
     }
 
     [Test]
@@ -25,7 +37,7 @@ public sealed class RuntimeSetupTests {
 
         setup.Run("INSTALL", "localhost");
 
-        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(new[] { "apache2-foreground" }));
+        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(apacheExecutables));
         Assert.That(error.ToString(), Does.Contain("Unknown COMPOSER_UPDATE mode: 'INSTALL'"));
     }
 
@@ -37,7 +49,7 @@ public sealed class RuntimeSetupTests {
         int exitCode = setup.Run("install", "localhost");
 
         Assert.That(exitCode, Is.Zero);
-        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(new[] { "composer", "apache2-foreground" }));
+        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(composerAndApacheExecutables));
         Assert.That(error.ToString(), Does.Contain("Composer exited with code 7; continuing startup."));
     }
 
@@ -49,7 +61,7 @@ public sealed class RuntimeSetupTests {
         int exitCode = setup.Run("install", "localhost");
 
         Assert.That(exitCode, Is.Zero);
-        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(new[] { "composer", "apache2-foreground" }));
+        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(composerAndApacheExecutables));
         Assert.That(error.ToString(), Does.Contain("Composer failed: missing composer; continuing startup."));
     }
 
@@ -60,14 +72,14 @@ public sealed class RuntimeSetupTests {
 
         setup.Run("skip", "localhost");
 
-        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(new[] { "apache2-foreground" }));
+        Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(apacheExecutables));
         Assert.That(output.ToString(), Does.Contain("Skipping composer update step."));
     }
 
     static RuntimeSetup CreateSetup(FakeProcessRunner runner, out StringWriter output, out StringWriter error) {
         output = new StringWriter();
         error = new StringWriter();
-        var platform = new PlatformInfo("/var/www", "apache2-foreground", Array.Empty<string>(), true);
+        var platform = new PlatformInfo("/var/www", "apache2-foreground", [], true);
         return new RuntimeSetup(platform, runner, output, error);
     }
 
@@ -78,10 +90,10 @@ public sealed class RuntimeSetupTests {
 
         public FakeProcessRunner(params object[] results) => this.results = new Queue<object>(results);
 
-        public List<ProcessCall> calls { get; } = new();
+        public List<ProcessCall> calls { get; } = [];
 
         public int Run(string executable, IEnumerable<string> arguments, string workingDirectory, bool forwardTerminationSignals) {
-            calls.Add(new ProcessCall(executable, arguments.ToArray(), workingDirectory, forwardTerminationSignals));
+            calls.Add(new ProcessCall(executable, [.. arguments], workingDirectory, forwardTerminationSignals));
             if (results.Count == 0) {
                 return 0;
             }

@@ -1,12 +1,17 @@
+using DockerFarah;
 using NUnit.Framework;
 
+namespace Farah.Tests;
+
 public sealed class ComposerSetupTests {
+    static readonly string[] defaultInstallArguments = ["install", "--no-interaction", "--no-dev", "--optimize-autoloader", "--classmap-authoritative"];
+
     [TestCase(null)]
     [TestCase("")]
     public void DefaultsToInstall(string? configuredMode) {
         var plan = ComposerSetup.Resolve(configuredMode);
 
-        Assert.That(plan.arguments, Is.EqualTo(new[] { "install", "--no-interaction", "--no-dev", "--optimize-autoloader", "--classmap-authoritative" }));
+        Assert.That(plan.arguments, Is.EqualTo(defaultInstallArguments));
         Assert.That(plan.message, Is.Null);
     }
 
