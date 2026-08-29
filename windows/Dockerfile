@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0-windowsservercore-ltsc2019 AS farah-build
 
 WORKDIR C:/source
 
+COPY Directory.Build.props .
 COPY common/Farah/ .
 
 RUN dotnet publish Farah.csproj \

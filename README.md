@@ -31,7 +31,7 @@ The launcher is the image's default `CMD`, so supplying a command to
 
 ## Local build and test
 
-The launcher unit tests do not require Docker:
+The launcher unit tests require a .NET 9 SDK but do not require Docker:
 
 ```text
 dotnet test docker-farah.sln --configuration Release

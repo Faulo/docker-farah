@@ -5,6 +5,7 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS farah-build
 
 WORKDIR /source
 
+COPY Directory.Build.props .
 COPY common/Farah/ .
 
 RUN dotnet publish Farah.csproj \
