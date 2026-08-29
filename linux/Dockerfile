@@ -104,7 +104,8 @@ RUN set -eux; \
     rm -f /tmp/keys.dev.pub /tmp/keys.tags.pub
 
 # Default application
-RUN composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader
+RUN composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader; \
+    chown -R www-data:www-data /var/www
 
 # Apache
 ENV SERVER_NAME=localhost
