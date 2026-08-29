@@ -43,8 +43,8 @@ def testImage() {
             error "${phpInfoPath} did not return HTML phpinfo output"
         }
 
-        assertValue(responseStatus(containerId, '/'), '404', 'HTTP status for /')
-        assertValue(responseStatus(containerId, '/AboutMe/'), '404', 'HTTP status for /AboutMe/')
+        assertValue(responseStatus(containerId, '/'), '410', 'HTTP status for /')
+        assertValue(responseStatus(containerId, '/AboutMe/'), '410', 'HTTP status for /AboutMe/')
     } finally {
         exec("docker rm --force --volumes ${containerId}")
     }
