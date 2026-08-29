@@ -6,6 +6,8 @@ Linux and Windows images provide Apache, PHP, Composer, Git, ImageMagick,
 UnZip, 7-Zip, and Firefox 145.0.2. PHP and its curl extension use OpenSSL 3.
 Composer's official release and snapshot verification keys are preconfigured.
 Published tags support PHP 8.2 through 8.5.
+The image includes a minimal Farah CMS application so the server starts without
+an application mount; `/slothsoft@farah/phpinfo` exposes its PHP information page.
 
 ## Runtime startup
 

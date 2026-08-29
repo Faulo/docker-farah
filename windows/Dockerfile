@@ -132,6 +132,11 @@ RUN $phpDir = Split-Path (Get-Command php | Select-Object -ExpandProperty Source
     & $composerShim --version; \
     if ($LASTEXITCODE -ne 0) { throw ('composer.exe failed with exit code {0}' -f $LASTEXITCODE) }
 
+# Default application
+RUN New-Item -ItemType Directory -Path C:/www/html -Force | Out-Null; \
+    composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader; \
+    if ($LASTEXITCODE -ne 0) { throw ('composer require failed with exit code {0}' -f $LASTEXITCODE) }
+
 # Farah
 COPY --from=farah-build C:/out/farah.exe C:/farah/farah.exe
 COPY windows/farah/index.php C:/farah/index.php

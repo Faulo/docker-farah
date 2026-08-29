@@ -103,6 +103,9 @@ RUN set -eux; \
     install -m 600 /tmp/keys.tags.pub "$composerHome/keys.tags.pub"; \
     rm -f /tmp/keys.dev.pub /tmp/keys.tags.pub
 
+# Default application
+RUN composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader
+
 # Apache
 ENV SERVER_NAME=localhost
 EXPOSE 80

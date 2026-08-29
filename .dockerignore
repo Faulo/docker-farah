@@ -1,4 +1,5 @@
 **
+!Directory.Build.props
 !common/
 !common/**
 common/**/bin/
