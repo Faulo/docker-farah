@@ -14,7 +14,7 @@ def curlCommand(containerId, arguments) {
 
 def responseStatus(containerId, path, retry = false) {
     def nullDevice = isUnix() ? '/dev/null' : 'NUL'
-    def writeOut = isUnix() ? "'%{http_code}'" : '"%%{http_code}"'
+    def writeOut = isUnix() ? "'%{http_code}'" : '"%{http_code}"'
     def retryArguments = retry ? '--retry 30 --retry-connrefused --retry-delay 1 ' : ''
     def errorArguments = retry ? '' : '--show-error '
     def arguments = "--silent ${errorArguments}${retryArguments}--output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
