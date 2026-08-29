@@ -12,41 +12,26 @@ def curlCommand(containerId, arguments) {
     return "docker exec ${containerId} curl ${arguments}"
 }
 
-def capture(command) {
-    if (isUnix()) {
-        return sh(script: command, returnStdout: true).trim()
-    }
-    return bat(script: "@${command}", returnStdout: true).trim()
-}
-
-def execute(command) {
-    if (isUnix()) {
-        sh command
-    } else {
-        bat "@${command}"
-    }
-}
-
 def responseStatus(containerId, path, retry = false) {
     def nullDevice = isUnix() ? '/dev/null' : 'NUL'
     def writeOut = isUnix() ? "'%{http_code}'" : '"%%{http_code}"'
     def retryArguments = retry ? '--retry 30 --retry-connrefused --retry-delay 1 ' : ''
     def errorArguments = retry ? '' : '--show-error '
     def arguments = "--silent ${errorArguments}${retryArguments}--output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
-    return capture(curlCommand(containerId, arguments))
+    return execStdout(curlCommand(containerId, arguments))
 }
 
 def responseBody(containerId, path) {
-    return capture(curlCommand(containerId, "--fail --silent --show-error http://localhost${path}"))
+    return execStdout(curlCommand(containerId, "--fail --silent --show-error http://localhost${path}"))
 }
 
 def testImage() {
-    def containerId = capture("docker run --detach ${candidateImage()}")
+    def containerId = execStdout("docker run --detach ${candidateImage()}")
     try {
         try {
             responseStatus(containerId, '/', true)
         } catch (Exception exception) {
-            execute("docker logs ${containerId}")
+            exec("docker logs ${containerId}")
             error "${candidateImage()} did not start serving HTTP"
         }
 
@@ -61,7 +46,7 @@ def testImage() {
         assertValue(responseStatus(containerId, '/'), '404', 'HTTP status for /')
         assertValue(responseStatus(containerId, '/AboutMe/'), '404', 'HTTP status for /AboutMe/')
     } finally {
-        execute("docker rm --force --volumes ${containerId}")
+        exec("docker rm --force --volumes ${containerId}")
     }
 }
 
