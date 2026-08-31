@@ -3,8 +3,9 @@
 https://hub.docker.com/repository/docker/faulo/farah
 
 Linux and Windows images provide Apache, PHP, Composer, Git, ImageMagick,
-UnZip, 7-Zip, and Firefox 145.0.2. PHP 7.4 and 8.0 use Debian Bullseye and
-OpenSSL 1.1.1; newer variants use Debian Bookworm and OpenSSL 3.
+UnZip, 7-Zip, and Firefox 145.0.2. Linux PHP 7.4 and 8.0 use Debian Bullseye;
+newer Linux variants use Debian Bookworm. PHP 7.4 through 8.1 use OpenSSL
+1.1.1, while PHP 8.2 and newer use OpenSSL 3.
 Composer's official release and snapshot verification keys are preconfigured.
 Build variants support PHP 7.4 and PHP 8.0 through 8.5.
 The image includes a minimal Farah CMS application so the server starts without
