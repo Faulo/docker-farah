@@ -88,12 +88,16 @@ jobs:
                           PHP_VERSION: "8.5"
                           DEBIAN: bookworm
 
-        uses: Faulo/workflows-docker/.github/workflows/publish.yml@d10fc90d460644513d0e884ae2bdd5f84c562991
+        uses: Faulo/workflows-docker/.github/workflows/publish.yml@85c13532c93e602f78adb72d8b08d3abd754519d
         with:
             image: ${{needs.configuration.outputs.image}}
             tag: ${{matrix.variant.tag}}
             build_args: ${{toJSON(matrix.variant.build_args)}}
-            linux_platforms: '["linux/amd64","linux/arm64"]'
+            linux_platforms: >-
+                {
+                  "linux/amd64":"ubuntu-24.04",
+                  "linux/arm64":"ubuntu-24.04-arm"
+                }
             linux_context: .
             windows_context: .
         secrets:
