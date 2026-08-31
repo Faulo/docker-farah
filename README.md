@@ -3,11 +3,14 @@
 https://hub.docker.com/repository/docker/faulo/farah
 
 Linux and Windows images provide Apache, PHP, Composer, Git, ImageMagick,
-UnZip, 7-Zip, and Firefox 145.0.2. PHP and its curl extension use OpenSSL 3.
+UnZip, 7-Zip, and Firefox 145.0.2. PHP 7.4 and 8.0 use Debian Bullseye and
+OpenSSL 1.1.1; newer variants use Debian Bookworm and OpenSSL 3.
 Composer's official release and snapshot verification keys are preconfigured.
-Published tags support PHP 8.2 through 8.5.
+Build variants support PHP 7.4 and PHP 8.0 through 8.5.
 The image includes a minimal Farah CMS application so the server starts without
 an application mount; `/slothsoft@farah/phpinfo` exposes its PHP information page.
+The Linux Dockerfile supports `linux/amd64` and `linux/arm64`. It does not include
+Wine; applications running in the image must provide native Linux executables.
 
 ## Runtime startup
 
@@ -43,7 +46,8 @@ Both Dockerfiles use the repository root as build context and require explicit
 Docker contexts:
 
 ```text
-docker --context linux build --pull --tag tmp/farah:latest --file linux/Dockerfile .
+docker --context linux build --pull --platform linux/amd64 --tag tmp/farah:latest --file linux/Dockerfile .
+docker --context linux build --pull --platform linux/arm64 --tag tmp/farah:latest --file linux/Dockerfile .
 docker --context windows build --pull --tag tmp/farah:latest --file windows/Dockerfile .
 ```
 

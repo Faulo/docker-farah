@@ -1,22 +1,31 @@
 ARG PHP_VERSION=8.2
 ARG DEBIAN=bookworm
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS farah-build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS farah-build
+
+ARG TARGETARCH
 
 WORKDIR /source
 
 COPY Directory.Build.props .
 COPY common/Farah/ .
 
-RUN dotnet publish Farah.csproj \
+RUN case "$TARGETARCH" in \
+        amd64) runtimeArchitecture=x64 ;; \
+        arm64) runtimeArchitecture=arm64 ;; \
+        *) echo "Unsupported Linux architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac \
+ && dotnet publish Farah.csproj \
         --configuration Release \
-        --runtime linux-x64 \
+        --runtime "linux-${runtimeArchitecture}" \
         --self-contained true \
         --property:PublishSingleFile=true \
         --output /out
 
 FROM php:${PHP_VERSION}-apache-${DEBIAN}
 ARG PHP_VERSION
+ARG DEBIAN
+ARG TARGETARCH
 ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR /var/www
 
@@ -42,7 +51,11 @@ RUN set -eux; \
         libxslt1-dev \
         libzip-dev; \
     pecl channel-update pecl.php.net; \
-    if dpkg --compare-versions "$PHP_VERSION" ge "8.2"; then \
+    # ds 1.4 is the last release supporting PHP 7.4. \
+    if dpkg --compare-versions "$PHP_VERSION" lt "8.2"; then \
+        pecl install ds-1.4.0; \
+        docker-php-ext-enable ds; \
+    else \
         pecl install ds; \
         docker-php-ext-enable ds; \
     fi; \
@@ -116,26 +129,27 @@ RUN a2enconf custom
 RUN php -v \
  && php -m \
  && php --ri imap \
- && openssl version | grep -E '^OpenSSL 3\.' \
- && curl --version | grep -E 'OpenSSL/3\.'
-
-# Wine
-RUN dpkg --add-architecture i386 \
- && apt-get update \
- && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    wine \
-    wine32 \
- && rm -rf /var/lib/apt/lists/*
+ && case "$DEBIAN" in \
+        bullseye) openssl version | grep -E '^OpenSSL 1\.1\.1'; curl --version | grep -E 'OpenSSL/1\.1\.1' ;; \
+        bookworm) openssl version | grep -E '^OpenSSL 3\.'; curl --version | grep -E 'OpenSSL/3\.' ;; \
+        *) echo "Unsupported Debian release: $DEBIAN" >&2; exit 1 ;; \
+    esac
 
 # Firefox
 ARG FIREFOX_VERSION=145.0.2
-ARG FIREFOX_SHA256=b35e92aec8cbcf627fa3dcf4e865b0de977cc66e1a3593d91b6e5ae945d1f0b9
+ARG FIREFOX_SHA256_AMD64=b35e92aec8cbcf627fa3dcf4e865b0de977cc66e1a3593d91b6e5ae945d1f0b9
+ARG FIREFOX_SHA256_ARM64=5d78bea414a72a549875e06a9a0f0cac056e4ea44f3df3df967e26a4302e04f5
 
 RUN set -eux; \
+    case "$TARGETARCH" in \
+        amd64) firefoxArchitecture=linux-x86_64; firefoxSha256="$FIREFOX_SHA256_AMD64" ;; \
+        arm64) firefoxArchitecture=linux-aarch64; firefoxSha256="$FIREFOX_SHA256_ARM64" ;; \
+        *) echo "Unsupported Linux architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac; \
     curl --fail --location --retry 3 \
-        "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.deb" \
+        "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/${firefoxArchitecture}/en-US/firefox-${FIREFOX_VERSION}.deb" \
         --output /tmp/firefox.deb; \
-    echo "${FIREFOX_SHA256}  /tmp/firefox.deb" | sha256sum -c -; \
+    echo "${firefoxSha256}  /tmp/firefox.deb" | sha256sum -c -; \
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /tmp/firefox.deb; \
     rm -f /tmp/firefox.deb; \
