@@ -25,8 +25,15 @@ def responseBody(containerId, path) {
     return execStdout(curlCommand(containerId, "--fail --silent --show-error http://localhost${path}"))
 }
 
-def testImage() {
-    def containerId = execStdout("docker run --detach ${candidateImage()}")
+def responseContentType(containerId, path) {
+    def nullDevice = isUnix() ? '/dev/null' : 'NUL'
+    def writeOut = isUnix() ? "'%{content_type}'" : '"%{content_type}"'
+    def arguments = "--fail --silent --show-error --output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
+    return execStdout(curlCommand(containerId, arguments))
+}
+
+def testImage(pageType, expectedContentType) {
+    def containerId = execStdout("docker run --detach --env FARAH_PAGE_TYPE=${pageType} ${candidateImage()}")
     try {
         try {
             responseStatus(containerId, '/', true)
@@ -37,6 +44,7 @@ def testImage() {
 
         def phpInfoPath = '/slothsoft@farah/phpinfo'
         assertValue(responseStatus(containerId, phpInfoPath), '200', "HTTP status for ${phpInfoPath}")
+        assertValue(responseContentType(containerId, phpInfoPath), expectedContentType, "Content-Type for ${phpInfoPath} with FARAH_PAGE_TYPE=${pageType}")
 
         def phpInfo = responseBody(containerId, phpInfoPath)
         if (!phpInfo.contains('<title>PHP') || !phpInfo.contains('phpinfo()')) {
@@ -85,7 +93,8 @@ stage('Integration Tests') {
                     ]) {
                         withEnvFile {
                             echo "Testing ${candidateImage()} on ${host}"
-                            testImage()
+                            testImage('xml', 'application/xhtml+xml')
+                            testImage('html', 'text/html')
                         }
                     }
                 }
