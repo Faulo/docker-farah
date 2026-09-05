@@ -7,6 +7,3 @@ $RECYCLE.BIN/
 # == .NET ==
 **/bin/
 **/obj/
-
-# == JetBrains IDEs ==
-**/.idea/workspace.xml
