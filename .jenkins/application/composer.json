@@ -1,0 +1,12 @@
+{
+    "name": "slothsoft/docker-farah-integration-test",
+    "type": "project",
+    "autoload": {
+        "files": [
+            "bootstrap.php"
+        ]
+    },
+    "require": {
+        "slothsoft/farah": "^1.29.3"
+    }
+}

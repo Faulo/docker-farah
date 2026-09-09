@@ -12,6 +12,13 @@ def curlCommand(containerId, arguments) {
     return "docker exec ${containerId} curl ${arguments}"
 }
 
+def installTestApplication(containerId) {
+    def applicationDirectory = isUnix() ? '/var/www/' : 'C:/www/'
+    def composer = isUnix() ? 'composer' : 'composer.exe'
+    exec("docker cp .jenkins/application/. ${containerId}:${applicationDirectory}")
+    exec("docker exec ${containerId} ${composer} dump-autoload --no-interaction --optimize")
+}
+
 def responseStatus(containerId, path, retry = false) {
     def nullDevice = isUnix() ? '/dev/null' : 'NUL'
     def writeOut = isUnix() ? "'%{http_code}'" : '"%{http_code}"'
@@ -33,8 +40,10 @@ def responseMediaType(containerId, path) {
 }
 
 def testImage(pageType, expectedMediaType) {
-    def containerId = execStdout("docker run --detach --env FARAH_PAGE_TYPE=${pageType} ${candidateImage()}")
+    def containerId = execStdout("docker run --detach --env COMPOSER_UPDATE=skip --env FARAH_PAGE_TYPE=${pageType} ${candidateImage()}")
     try {
+        installTestApplication(containerId)
+
         try {
             responseStatus(containerId, '/', true)
         } catch (Exception exception) {
@@ -42,13 +51,15 @@ def testImage(pageType, expectedMediaType) {
             error "${candidateImage()} did not start serving HTTP"
         }
 
-        def phpInfoPath = '/phpinfo/'
-        assertValue(responseStatus(containerId, phpInfoPath), '200', "HTTP status for ${phpInfoPath}")
-        assertValue(responseMediaType(containerId, phpInfoPath), expectedMediaType, "Content-Type for ${phpInfoPath} with FARAH_PAGE_TYPE=${pageType}")
+        def pagePaths = ['/phpinfo/', '/consumer-sitemap/']
+        for (def path in pagePaths) {
+            assertValue(responseStatus(containerId, path), '200', "HTTP status for ${path}")
+            assertValue(responseMediaType(containerId, path), expectedMediaType, "Content-Type for ${path} with FARAH_PAGE_TYPE=${pageType}")
+        }
 
-        def phpInfo = responseBody(containerId, phpInfoPath)
+        def phpInfo = responseBody(containerId, '/phpinfo/')
         if (!phpInfo.contains('<title>PHP') || !phpInfo.contains('phpinfo()')) {
-            error "${phpInfoPath} did not return HTML phpinfo output"
+            error '/phpinfo/ did not return HTML phpinfo output'
         }
 
         assertValue(responseStatus(containerId, '/'), '501', 'HTTP status for /')
