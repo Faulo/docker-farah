@@ -5,12 +5,16 @@ namespace DockerFarah;
 
 sealed class PlatformInfo {
     public static readonly PlatformInfo current = OperatingSystem.IsWindows()
-        ? new PlatformInfo(
+        ? CreateWindows()
+        : new PlatformInfo("/var/www", "apache2-foreground", [], true);
+
+    public static PlatformInfo CreateWindows() {
+        return new PlatformInfo(
             @"C:\www",
             "powershell.exe",
-            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Get-Content -LiteralPath (Join-Path $env:APPDATA 'Apache24/logs/error.log') -Wait -Tail 10"],
-            false)
-        : new PlatformInfo("/var/www", "apache2-foreground", [], true);
+            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "[Environment]::SetEnvironmentVariable('SERVER_NAME', $env:SERVER_NAME, 'Machine'); [Environment]::SetEnvironmentVariable('FARAH_PAGE_TYPE', $env:FARAH_PAGE_TYPE, 'Machine'); Start-Service -Name Apache; Get-Content -LiteralPath (Join-Path $env:APPDATA 'Apache24/logs/error.log') -Wait -Tail 10"],
+            false);
+    }
 
     public PlatformInfo(string composerWorkingDirectory, string serverExecutable, IReadOnlyList<string> serverArguments, bool forwardTerminationSignals) {
         this.composerWorkingDirectory = composerWorkingDirectory;

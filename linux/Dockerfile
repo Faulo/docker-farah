@@ -97,6 +97,7 @@ COPY linux/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 # Farah
 COPY --from=farah-build --chmod=755 /out/farah /farah/farah
 COPY --chmod=777 linux/farah/index.php /farah/index.php
+COPY common/sitemap.xml /farah/sitemap.xml
 RUN git config --global --add safe.directory *
 CMD ["/farah/farah"]
 
@@ -117,7 +118,13 @@ RUN set -eux; \
     rm -f /tmp/keys.dev.pub /tmp/keys.tags.pub
 
 # Default application
-RUN composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader; \
+RUN set -eux; \
+    if dpkg --compare-versions "$PHP_VERSION" ge "8.2"; then \
+        farahPackage='slothsoft/farah:^1.29.3'; \
+    else \
+        farahPackage='slothsoft/farah'; \
+    fi; \
+    composer require "$farahPackage" --no-interaction --prefer-dist --optimize-autoloader; \
     chown -R www-data:www-data /var/www
 
 # Apache

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<domain xmlns="http://schema.slothsoft.net/farah/sitemap"
+    name="localhost"
+    vendor="slothsoft"
+    module="farah"
+    uri="/"
+    version="1.1">
+    <page name="phpinfo" ref="/phpinfo" uri="/phpinfo/" />
+</domain>

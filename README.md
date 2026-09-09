@@ -9,7 +9,8 @@ newer Linux variants use Debian Bookworm. PHP 7.4 through 8.1 use OpenSSL
 Composer's official release and snapshot verification keys are preconfigured.
 Build variants support PHP 7.4 and PHP 8.0 through 8.5.
 The image includes a minimal Farah CMS application so the server starts without
-an application mount; `/slothsoft@farah/phpinfo` exposes its PHP information page.
+an application mount. Its sitemap exposes a PHP information page at `/phpinfo/`;
+the underlying Farah asset remains available at `/slothsoft@farah/phpinfo`.
 The Linux Dockerfile supports `linux/amd64` and `linux/arm64`. It does not include
 Wine; applications running in the image must provide native Linux executables.
 
@@ -31,6 +32,10 @@ to `install` and supports these modes:
 Unknown modes and Composer failures produce warnings but do not prevent Apache
 from starting. Linux forwards `SERVER_NAME` to `apache2-foreground`. Windows
 keeps the container attached to Apache's error log after Composer finishes.
+
+On PHP 8.2 and newer, `FARAH_PAGE_TYPE` selects how sitemap pages without an
+explicit stream are serialized. Set it to `xml` for `application/xhtml+xml` or
+to `html` for `text/html`. Asset URLs do not inherit this setting.
 
 The launcher is the image's default `CMD`, so supplying a command to
 `docker run` overrides startup normally.

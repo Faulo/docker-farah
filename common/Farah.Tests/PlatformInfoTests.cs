@@ -15,11 +15,12 @@ public sealed class PlatformInfoTests {
     }
 
     [Test]
-    public void PreservesWindowsPowerShellCommand() {
-        string[] arguments = ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Get-Content -LiteralPath (Join-Path $env:APPDATA 'Apache24/logs/error.log') -Wait -Tail 10"];
-        var platform = new PlatformInfo(@"C:\www", "powershell.exe", arguments, false);
+    public void CreatesWindowsApacheCommand() {
+        string[] arguments = ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "[Environment]::SetEnvironmentVariable('SERVER_NAME', $env:SERVER_NAME, 'Machine'); [Environment]::SetEnvironmentVariable('FARAH_PAGE_TYPE', $env:FARAH_PAGE_TYPE, 'Machine'); Start-Service -Name Apache; Get-Content -LiteralPath (Join-Path $env:APPDATA 'Apache24/logs/error.log') -Wait -Tail 10"];
+        var platform = PlatformInfo.CreateWindows();
 
         Assert.That(platform.CreateServerArguments("ignored.example"), Is.EqualTo(arguments));
         Assert.That(platform.forwardTerminationSignals, Is.False);
+        Assert.That(platform.serverExecutable, Is.EqualTo("powershell.exe"));
     }
 }
