@@ -25,14 +25,14 @@ def responseBody(containerId, path) {
     return execStdout(curlCommand(containerId, "--fail --silent --show-error http://localhost${path}"))
 }
 
-def responseContentType(containerId, path) {
+def responseMediaType(containerId, path) {
     def nullDevice = isUnix() ? '/dev/null' : 'NUL'
     def writeOut = isUnix() ? "'%{content_type}'" : '"%{content_type}"'
     def arguments = "--fail --silent --show-error --output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
-    return execStdout(curlCommand(containerId, arguments))
+    return execStdout(curlCommand(containerId, arguments)).split(';', 2)[0].trim()
 }
 
-def testImage(pageType, expectedContentType) {
+def testImage(pageType, expectedMediaType) {
     def containerId = execStdout("docker run --detach --env FARAH_PAGE_TYPE=${pageType} ${candidateImage()}")
     try {
         try {
@@ -42,9 +42,9 @@ def testImage(pageType, expectedContentType) {
             error "${candidateImage()} did not start serving HTTP"
         }
 
-        def phpInfoPath = '/slothsoft@farah/phpinfo'
+        def phpInfoPath = '/phpinfo/'
         assertValue(responseStatus(containerId, phpInfoPath), '200', "HTTP status for ${phpInfoPath}")
-        assertValue(responseContentType(containerId, phpInfoPath), expectedContentType, "Content-Type for ${phpInfoPath} with FARAH_PAGE_TYPE=${pageType}")
+        assertValue(responseMediaType(containerId, phpInfoPath), expectedMediaType, "Content-Type for ${phpInfoPath} with FARAH_PAGE_TYPE=${pageType}")
 
         def phpInfo = responseBody(containerId, phpInfoPath)
         if (!phpInfo.contains('<title>PHP') || !phpInfo.contains('phpinfo()')) {
