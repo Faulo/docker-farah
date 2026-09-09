@@ -29,6 +29,15 @@ ARG TARGETARCH
 ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR /var/www
 
+# Bullseye reached EOL on 2026-08-31, so use its final signed snapshot.
+RUN set -eux; \
+    if [ "$DEBIAN" = "bullseye" ]; then \
+        sed -i \
+            -e 's|^deb http://deb.debian.org/debian-security |deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260901T000000Z |' \
+            -e 's|^deb http://deb.debian.org/debian |deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260901T000000Z |' \
+            /etc/apt/sources.list; \
+    fi
+
 # Runtime dependencies
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \

@@ -8,6 +8,8 @@ newer Linux variants use Debian Bookworm. PHP 7.4 through 8.1 use OpenSSL
 1.1.1, while PHP 8.2 and newer use OpenSSL 3.
 Composer's official release and snapshot verification keys are preconfigured.
 Build variants support PHP 7.4 and PHP 8.0 through 8.5.
+The PHP 7.4 and 8.0 Linux variants use Debian Bullseye's final signed snapshot;
+these legacy variants no longer receive upstream security updates.
 The image includes a minimal Farah CMS application so the server starts without
 an application mount. Its sitemap exposes a PHP information page at `/phpinfo/`;
 the underlying Farah asset remains available at `/slothsoft@farah/phpinfo`.
