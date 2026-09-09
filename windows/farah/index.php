@@ -1,12 +1,10 @@
 <?php
-use Slothsoft\Core\DOMHelper;
 use Slothsoft\Farah\FarahUrl\FarahUrlStreamIdentifier;
 use Slothsoft\Farah\Http\MessageFactory;
 use Slothsoft\Farah\Kernel;
 use Slothsoft\Farah\RequestStrategy\LookupAssetStrategy;
 use Slothsoft\Farah\RequestStrategy\LookupPageStrategy;
 use Slothsoft\Farah\ResponseStrategy\SendHeaderAndBodyStrategy;
-use Slothsoft\Farah\Sites\Domain;
 
 require_once 'C:/www/vendor/autoload.php';
 
@@ -18,8 +16,7 @@ if (preg_match('~^/[^/]+@[^/]+~', $request->getUri()->getPath())) {
     $defaultStream = $pageType
         ? FarahUrlStreamIdentifier::createFromString($pageType)
         : null;
-    $sitemap = DOMHelper::loadDocument(__DIR__ . '/sitemap.xml');
-    $requestStrategy = new LookupPageStrategy(new Domain($sitemap), $defaultStream);
+    $requestStrategy = new LookupPageStrategy(null, $defaultStream);
 }
 $responseStrategy = new SendHeaderAndBodyStrategy();
 

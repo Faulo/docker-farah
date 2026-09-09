@@ -136,14 +136,12 @@ RUN $phpDir = Split-Path (Get-Command php | Select-Object -ExpandProperty Source
 
 # Default application
 RUN New-Item -ItemType Directory -Path C:/www/html -Force | Out-Null; \
-    $farahPackage = if ([version]$env:PHP_VERSION -ge [version]'8.2') { 'slothsoft/farah:^1.29.3' } else { 'slothsoft/farah' }; \
-    composer require $farahPackage --no-interaction --prefer-dist --optimize-autoloader; \
+    composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader; \
     if ($LASTEXITCODE -ne 0) { throw ('composer require failed with exit code {0}' -f $LASTEXITCODE) }
 
 # Farah
 COPY --from=farah-build C:/out/farah.exe C:/farah/farah.exe
 COPY windows/farah/index.php C:/farah/index.php
-COPY common/sitemap.xml C:/farah/sitemap.xml
 RUN git config --global --add safe.directory *
 CMD ["C:/farah/farah.exe"]
 

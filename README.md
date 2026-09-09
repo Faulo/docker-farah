@@ -11,8 +11,7 @@ Build variants support PHP 7.4 and PHP 8.0 through 8.5.
 The PHP 7.4 and 8.0 Linux variants use Debian Bullseye's final signed snapshot;
 these legacy variants no longer receive upstream security updates.
 The image includes a minimal Farah CMS application so the server starts without
-an application mount. Its sitemap exposes a PHP information page at `/phpinfo/`;
-the underlying Farah asset remains available at `/slothsoft@farah/phpinfo`.
+an application mount; `/slothsoft@farah/phpinfo` exposes its PHP information page.
 The Linux Dockerfile supports `linux/amd64` and `linux/arm64`. It does not include
 Wine; applications running in the image must provide native Linux executables.
 
@@ -37,7 +36,9 @@ keeps the container attached to Apache's error log after Composer finishes.
 
 On PHP 8.2 and newer, `FARAH_PAGE_TYPE` selects how sitemap pages without an
 explicit stream are serialized. Set it to `xml` for `application/xhtml+xml` or
-to `html` for `text/html`. Asset URLs do not inherit this setting.
+to `html` for `text/html`. Asset URLs do not inherit this setting. The consuming
+application must register its sitemap, typically from its Composer bootstrap via
+`Kernel::setCurrentSitemap()`; the image does not provide one.
 
 The launcher is the image's default `CMD`, so supplying a command to
 `docker run` overrides startup normally.
