@@ -5,11 +5,11 @@ def assertValue(actual, expected, description) {
 }
 
 def testBuildContract() {
-    def build = execStdout("docker image inspect --format \"{{ index .Config.Labels \\\"net.slothsoft.farah.build\\\" }}\" ${candidateImage()}")
+    def build = execStdout("docker image inspect --format \"{{ .Config.Labels.farah_build }}\" ${candidateImage()}")
     assertValue(build, 'solution', 'Build template label')
     if (!isUnix()) {
-        def powershellMajor = execStdout("docker image inspect --format \"{{ index .Config.Labels \\\"net.slothsoft.farah.powershell.major\\\" }}\" ${candidateImage()}")
-        def powershellVerification = execStdout("docker image inspect --format \"{{ index .Config.Labels \\\"net.slothsoft.farah.powershell.verification\\\" }}\" ${candidateImage()}")
+        def powershellMajor = execStdout("docker image inspect --format \"{{ .Config.Labels.farah_powershell_major }}\" ${candidateImage()}")
+        def powershellVerification = execStdout("docker image inspect --format \"{{ .Config.Labels.farah_powershell_verification }}\" ${candidateImage()}")
         assertValue(powershellMajor, '7', 'PowerShell major label')
         assertValue(powershellVerification, 'sha256', 'PowerShell verification label')
     }
