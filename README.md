@@ -7,6 +7,8 @@ UnZip, 7-Zip, and Firefox 145.0.2. Linux PHP 7.4 and 8.0 use Debian Bullseye;
 newer Linux variants use Debian Bookworm. PHP 7.4 through 8.1 use OpenSSL
 1.1.1, while PHP 8.2 and newer use OpenSSL 3.
 Composer's official release and snapshot verification keys are preconfigured.
+The Windows image includes the latest stable PowerShell 7 release, verified
+against its official published checksum during each build.
 Build variants support PHP 7.4 and PHP 8.0 through 8.5.
 The PHP 7.4 and 8.0 Linux variants use Debian Bullseye's final signed snapshot;
 these legacy variants no longer receive upstream security updates.

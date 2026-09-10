@@ -1,26 +1,26 @@
 ARG PHP_VERSION=8.2
 ARG DEBIAN=bookworm
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS farah-build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS build
 
 ARG TARGETARCH
 
-WORKDIR /source
+WORKDIR /solution
 
-COPY Directory.Build.props .
-COPY common/Farah/ .
+COPY . .
 
 RUN case "$TARGETARCH" in \
         amd64) runtimeArchitecture=x64 ;; \
         arm64) runtimeArchitecture=arm64 ;; \
         *) echo "Unsupported Linux architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac \
- && dotnet publish Farah.csproj \
+ && dotnet publish docker-farah.sln \
         --configuration Release \
         --runtime "linux-${runtimeArchitecture}" \
         --self-contained true \
         --property:PublishSingleFile=true \
-        --output /out
+        --property:UseAppHost=true \
+        --property:DebugType=None
 
 FROM php:${PHP_VERSION}-apache-${DEBIAN}
 ARG PHP_VERSION
@@ -104,7 +104,7 @@ RUN set -eux; \
 COPY linux/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
 # Farah
-COPY --from=farah-build --chmod=755 /out/farah /farah/farah
+COPY --from=build --chmod=755 /solution/common/Farah/bin/Release/net9.0/linux-*/publish/farah /farah/farah
 COPY --chmod=777 linux/farah/index.php /farah/index.php
 RUN git config --global --add safe.directory *
 CMD ["/farah/farah"]

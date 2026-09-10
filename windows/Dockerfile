@@ -1,16 +1,18 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0-windowsservercore-ltsc2019 AS farah-build
+FROM mcr.microsoft.com/dotnet/sdk:9.0-nanoserver-1809 AS build
 
-WORKDIR C:/source
+WORKDIR C:/solution
 
-COPY Directory.Build.props .
-COPY common/Farah/ .
+ENV NUGET_PACKAGES=C:/nuget/packages
 
-RUN dotnet publish Farah.csproj \
+COPY . .
+
+RUN dotnet publish docker-farah.sln \
         --configuration Release \
         --runtime win-x64 \
         --self-contained true \
         --property:PublishSingleFile=true \
-        --output C:/out
+        --property:UseAppHost=true \
+        --property:DebugType=None
 
 FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-ltsc2019
 
@@ -140,21 +142,51 @@ RUN New-Item -ItemType Directory -Path C:/www/html -Force | Out-Null; \
     if ($LASTEXITCODE -ne 0) { throw ('composer require failed with exit code {0}' -f $LASTEXITCODE) }
 
 # Farah
-COPY --from=farah-build C:/out/farah.exe C:/farah/farah.exe
+COPY --from=build C:/solution/common/Farah/bin/Release/net9.0/win-x64/publish/ C:/farah/
 COPY windows/farah/index.php C:/farah/index.php
 RUN git config --global --add safe.directory *
 CMD ["C:/farah/farah.exe"]
 
 # PowerShell
-ARG POWERSHELL_VERSION=7.6.4
-ADD https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/PowerShell-${POWERSHELL_VERSION}-win-x64.zip C:/powershell.zip
-RUN $archive = 'C:/powershell.zip'; \
+ARG POWERSHELL_MAJOR=7
+
+ADD https://github.com/PowerShell/PowerShell/releases.atom C:/powershell-releases.atom
+
+RUN $feed = Get-Content C:/powershell-releases.atom -Raw; \
+    $versionPattern = 'releases/tag/v(' + [regex]::Escape($env:POWERSHELL_MAJOR) + '\.\d+\.\d+)"'; \
+    $powershellVersions = [regex]::Matches($feed, $versionPattern) | \
+      ForEach-Object { [version]$_.Groups[1].Value } | \
+      Sort-Object -Unique -Descending; \
+    foreach ($candidate in $powershellVersions) { \
+        $candidateVersion = $candidate.ToString(); \
+        $candidateArchive = 'PowerShell-' + $candidateVersion + '-win-x64.zip'; \
+        $candidateUrl = 'https://github.com/PowerShell/PowerShell/releases/download/v' + $candidateVersion; \
+        curl.exe --fail --location --silent --show-error ($candidateUrl + '/hashes.sha256') -o C:/powershell-hashes; \
+        if ($LASTEXITCODE -eq 0) { \
+            $hashLine = Get-Content C:/powershell-hashes | Where-Object { $_ -match ('\*' + [regex]::Escape($candidateArchive) + '$') }; \
+            if ($hashLine) { \
+                $powershellVersion = $candidateVersion; \
+                $archiveName = $candidateArchive; \
+                $powershellUrl = $candidateUrl; \
+                break; \
+            } \
+        } \
+    }; \
+    if (-not $powershellVersion) { throw ('No complete stable PowerShell ' + $env:POWERSHELL_MAJOR + ' release found') }; \
+    $archive = 'C:/' + $archiveName; \
+    $archiveUrl = $powershellUrl + '/' + $archiveName; \
+    curl.exe --fail --location --retry 5 --retry-all-errors $archiveUrl -o $archive; \
+    if ($LASTEXITCODE -ne 0) { throw ('Failed to download ' + $archiveUrl) }; \
+    $expectedHash = ($hashLine -split '\s+')[0]; \
+    $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash; \
+    if ($actualHash -ne $expectedHash) { throw ('Checksum verification failed for ' + $archiveName) }; \
     $destination = 'C:/Program Files/PowerShell/7'; \
     New-Item -ItemType Directory -Force $destination | Out-Null; \
     Expand-Archive -LiteralPath $archive -DestinationPath $destination; \
-    Remove-Item -LiteralPath $archive; \
+    Remove-Item -LiteralPath $archive,C:/powershell-hashes,C:/powershell-releases.atom; \
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); \
-    [Environment]::SetEnvironmentVariable('Path', ($destination + ';' + $machinePath), 'Machine')
-RUN pwsh.exe -NoLogo -NoProfile -Command \
-        'if ($PSVersionTable.PSVersion.ToString() -ne $env:POWERSHELL_VERSION) { exit 1 }'; \
+    [Environment]::SetEnvironmentVariable('Path', ($destination + ';' + $machinePath), 'Machine'); \
+    $env:Path = $destination + ';' + $env:Path; \
+    pwsh -NoLogo -NoProfile -Command \
+        'if ($PSVersionTable.PSVersion.Major -ne [int]$env:POWERSHELL_MAJOR) { exit 1 }'; \
     if ($LASTEXITCODE -ne 0) { throw 'PowerShell smoke check failed' }
