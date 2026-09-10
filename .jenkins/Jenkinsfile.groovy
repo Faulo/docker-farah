@@ -44,6 +44,28 @@ def testPowerShell() {
     assertValue(major, '7', 'PowerShell major version')
 }
 
+def testPhpVersion() {
+    def minor = execStdout("docker run --rm ${candidateImage()} php -r \"echo PHP_MAJOR_VERSION, '.', PHP_MINOR_VERSION;\"")
+    assertValue(minor, '8.5', 'PHP minor version')
+}
+
+def testLinuxDistribution() {
+    exec("docker run --rm ${candidateImage()} grep --fixed-strings VERSION_CODENAME=trixie /etc/os-release")
+}
+
+def testChocolateyPackage(packageName) {
+    def installedPackage = execStdout("docker run --rm ${candidateImage()} choco list --local-only --exact ${packageName} --limit-output")
+    if (!installedPackage.toLowerCase().startsWith("${packageName.toLowerCase()}|")) {
+        error "Chocolatey package ${packageName} is not installed: '${installedPackage}'"
+    }
+}
+
+def testWindowsPackages() {
+    for (def packageName in ['powershell-core', 'firefox', 'vcredist140']) {
+        testChocolateyPackage(packageName)
+    }
+}
+
 def testImage(pageType, expectedMediaType) {
     def containerId = execStdout("docker run --detach --env COMPOSER_UPDATE=skip --env FARAH_PAGE_TYPE=${pageType} ${candidateImage()}")
     try {
@@ -109,8 +131,12 @@ stage('Integration Tests') {
                     ]) {
                         withEnvFile {
                             echo "Testing ${candidateImage()} on ${host}"
-                            if (!isUnix()) {
+                            testPhpVersion()
+                            if (isUnix()) {
+                                testLinuxDistribution()
+                            } else {
                                 testPowerShell()
+                                testWindowsPackages()
                             }
                             testImage('xml', 'application/xhtml+xml')
                             testImage('html', 'text/html')
