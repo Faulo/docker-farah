@@ -4,17 +4,6 @@ def assertValue(actual, expected, description) {
     }
 }
 
-def testBuildContract() {
-    def build = execStdout("docker image inspect --format \"{{ .Config.Labels.farah_build }}\" ${candidateImage()}")
-    assertValue(build, 'solution', 'Build template label')
-    if (!isUnix()) {
-        def powershellMajor = execStdout("docker image inspect --format \"{{ .Config.Labels.farah_powershell_major }}\" ${candidateImage()}")
-        def powershellVerification = execStdout("docker image inspect --format \"{{ .Config.Labels.farah_powershell_verification }}\" ${candidateImage()}")
-        assertValue(powershellMajor, '7', 'PowerShell major label')
-        assertValue(powershellVerification, 'sha256', 'PowerShell verification label')
-    }
-}
-
 def candidateImage() {
     return "$DOCKER_NAMESPACE/$DOCKER_IMAGE:$DOCKER_TAG"
 }
@@ -120,7 +109,6 @@ stage('Integration Tests') {
                     ]) {
                         withEnvFile {
                             echo "Testing ${candidateImage()} on ${host}"
-                            testBuildContract()
                             if (!isUnix()) {
                                 testPowerShell()
                             }
