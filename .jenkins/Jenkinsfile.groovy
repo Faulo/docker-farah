@@ -120,9 +120,9 @@ stage('Integration Tests') {
                             echo "Testing ${candidateImage()} on ${host}"
                             testBuildContract()
                             if (!isUnix()) {
-                            testPowerShell()
-                        }
-                        testImage('xml', 'application/xhtml+xml')
+                                testPowerShell()
+                            }
+                            testImage('xml', 'application/xhtml+xml')
                             testImage('html', 'text/html')
                         }
                     }
