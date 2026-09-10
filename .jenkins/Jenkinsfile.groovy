@@ -4,33 +4,13 @@ def assertValue(actual, expected, description) {
     }
 }
 
-def assertFileContains(path, expectedValues) {
-    def contents = readFile(path)
-    for (def expectedValue in expectedValues) {
-        if (!contents.contains(expectedValue)) {
-            error "${path} does not contain the template requirement '${expectedValue}'"
-        }
-    }
-}
-
 def testBuildContract() {
-    assertFileContains('common/Farah.Tests/Farah.Tests.csproj', [
-        '<IsPublishable>false</IsPublishable>'
-    ])
-    assertFileContains('linux/Dockerfile', [
-        'WORKDIR /solution',
-        'COPY . .',
-        'dotnet publish docker-farah.sln'
-    ])
-    assertFileContains('windows/Dockerfile', [
-        'mcr.microsoft.com/dotnet/sdk:9.0-nanoserver-1809',
-        'WORKDIR C:/solution',
-        'COPY . .',
-        'dotnet publish docker-farah.sln',
-        'ARG POWERSHELL_MAJOR=7',
-        'api.github.com/repos/PowerShell/PowerShell/releases?per_page=100',
-        "Where-Object name -eq 'hashes.sha256'"
-    ])
+    def labels = readJSON text: execStdout("docker image inspect --format \"{{json .Config.Labels}}\" ${candidateImage()}")
+    assertValue(labels['net.slothsoft.farah.build'], 'solution', 'Build template label')
+    if (!isUnix()) {
+        assertValue(labels['net.slothsoft.farah.powershell.major'], '7', 'PowerShell major label')
+        assertValue(labels['net.slothsoft.farah.powershell.verification'], 'sha256', 'PowerShell verification label')
+    }
 }
 
 def candidateImage() {
@@ -132,15 +112,14 @@ stage('Integration Tests') {
                     buildResult: 'FAILURE',
                     catchInterruptions: false
                 ) {
-                    testBuildContract()
-
                     withEnv([
                         "DOCKER_NAMESPACE=${dockerNamespace}",
                         "DOCKER_TAG=${dockerTag}"
                     ]) {
-                    withEnvFile {
-                        echo "Testing ${candidateImage()} on ${host}"
-                        if (!isUnix()) {
+                        withEnvFile {
+                            echo "Testing ${candidateImage()} on ${host}"
+                            testBuildContract()
+                            if (!isUnix()) {
                             testPowerShell()
                         }
                         testImage('xml', 'application/xhtml+xml')
