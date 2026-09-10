@@ -4,6 +4,35 @@ def assertValue(actual, expected, description) {
     }
 }
 
+def assertFileContains(path, expectedValues) {
+    def contents = readFile(path)
+    for (def expectedValue in expectedValues) {
+        if (!contents.contains(expectedValue)) {
+            error "${path} does not contain the template requirement '${expectedValue}'"
+        }
+    }
+}
+
+def testBuildContract() {
+    assertFileContains('common/Farah.Tests/Farah.Tests.csproj', [
+        '<IsPublishable>false</IsPublishable>'
+    ])
+    assertFileContains('linux/Dockerfile', [
+        'WORKDIR /solution',
+        'COPY . .',
+        'dotnet publish docker-farah.sln'
+    ])
+    assertFileContains('windows/Dockerfile', [
+        'mcr.microsoft.com/dotnet/sdk:9.0-nanoserver-1809',
+        'WORKDIR C:/solution',
+        'COPY . .',
+        'dotnet publish docker-farah.sln',
+        'ARG POWERSHELL_MAJOR=7',
+        'api.github.com/repos/PowerShell/PowerShell/releases?per_page=100',
+        "Where-Object name -eq 'hashes.sha256'"
+    ])
+}
+
 def candidateImage() {
     return "$DOCKER_NAMESPACE/$DOCKER_IMAGE:$DOCKER_TAG"
 }
@@ -37,6 +66,11 @@ def responseMediaType(containerId, path) {
     def writeOut = isUnix() ? "'%{content_type}'" : '"%{content_type}"'
     def arguments = "--fail --silent --show-error --output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
     return execStdout(curlCommand(containerId, arguments)).split(';', 2)[0].trim()
+}
+
+def testPowerShell() {
+    def major = execStdout("docker run --rm ${candidateImage()} pwsh -NoLogo -NoProfile -Command \"\$PSVersionTable.PSVersion.Major\"")
+    assertValue(major, '7', 'PowerShell major version')
 }
 
 def testImage(pageType, expectedMediaType) {
@@ -98,13 +132,18 @@ stage('Integration Tests') {
                     buildResult: 'FAILURE',
                     catchInterruptions: false
                 ) {
+                    testBuildContract()
+
                     withEnv([
                         "DOCKER_NAMESPACE=${dockerNamespace}",
                         "DOCKER_TAG=${dockerTag}"
                     ]) {
-                        withEnvFile {
-                            echo "Testing ${candidateImage()} on ${host}"
-                            testImage('xml', 'application/xhtml+xml')
+                    withEnvFile {
+                        echo "Testing ${candidateImage()} on ${host}"
+                        if (!isUnix()) {
+                            testPowerShell()
+                        }
+                        testImage('xml', 'application/xhtml+xml')
                             testImage('html', 'text/html')
                         }
                     }
