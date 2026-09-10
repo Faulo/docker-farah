@@ -145,6 +145,7 @@ RUN New-Item -ItemType Directory -Path C:/www/html -Force | Out-Null; \
 COPY --from=build C:/solution/common/Farah/bin/Release/net9.0/win-x64/publish/ C:/farah/
 COPY windows/farah/index.php C:/farah/index.php
 RUN git config --global --add safe.directory *
+ENV FARAH_AUTOLOAD_FILE="/var/www/vendor/autoload.php"
 CMD ["C:/farah/farah.exe"]
 
 # PowerShell
