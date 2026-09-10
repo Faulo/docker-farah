@@ -6,10 +6,10 @@ def assertValue(actual, expected, description) {
 
 def testBuildContract() {
     def labels = readJSON text: execStdout("docker image inspect --format \"{{json .Config.Labels}}\" ${candidateImage()}")
-    assertValue(labels['net.slothsoft.farah.build'], 'solution', 'Build template label')
+    assertValue(labels.get('net.slothsoft.farah.build'), 'solution', 'Build template label')
     if (!isUnix()) {
-        assertValue(labels['net.slothsoft.farah.powershell.major'], '7', 'PowerShell major label')
-        assertValue(labels['net.slothsoft.farah.powershell.verification'], 'sha256', 'PowerShell verification label')
+        assertValue(labels.get('net.slothsoft.farah.powershell.major'), '7', 'PowerShell major label')
+        assertValue(labels.get('net.slothsoft.farah.powershell.verification'), 'sha256', 'PowerShell verification label')
     }
 }
 
