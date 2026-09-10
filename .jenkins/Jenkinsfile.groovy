@@ -40,7 +40,7 @@ def responseMediaType(containerId, path) {
 }
 
 def testPowerShell() {
-    def major = execStdout("docker run --rm ${candidateImage()} pwsh -NoLogo -NoProfile -Command \"\$PSVersionTable.PSVersion.Major\"")
+    def major = execStdout("docker run --rm ${candidateImage()} pwsh -NoLogo -NoProfile -Command \"(Get-Host).Version.Major\"")
     assertValue(major, '7', 'PowerShell major version')
 }
 
