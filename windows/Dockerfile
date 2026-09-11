@@ -18,21 +18,27 @@ FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-ltsc2019
 
 SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell", "-NonInteractive", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
+ARG WIX_SHA256=2C1888D5D1DBA377FC7FA14444CF556963747FF9A0A289A3599CF09DA03B9E2E
+
 RUN Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')); \
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey installation failed' }
 
 COPY windows/Install-Firefox.ps1 C:/build/Install-Firefox.ps1
+COPY windows/Install-VCRuntime.ps1 C:/build/Install-VCRuntime.ps1
 
-# The Firefox installer still hangs under container isolation. Register the
-# newest Chocolatey package without its script, then extract its verified payload.
+# These installers are not reliable under container isolation. Register the
+# newest Chocolatey packages without their scripts, then extract verified payloads.
 RUN choco install 7zip --yes --no-progress --limit-output --source 'https://community.chocolatey.org/api/v2/'; \
     if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco install 7zip failed with exit code {0}' -f $LASTEXITCODE) }; \
     choco install firefox --yes --no-progress --limit-output --skip-powershell --source 'https://community.chocolatey.org/api/v2/'; \
     if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco register firefox failed with exit code {0}' -f $LASTEXITCODE) }; \
+    choco install vcredist140 --yes --no-progress --limit-output --skip-powershell --source 'https://community.chocolatey.org/api/v2/'; \
+    if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco register vcredist140 failed with exit code {0}' -f $LASTEXITCODE) }; \
     $firefoxPackage = @(choco list --local-only --exact firefox --limit-output); \
     if ($LASTEXITCODE -ne 0 -or $firefoxPackage.Count -ne 1) { throw 'Expected exactly one Chocolatey Firefox package' }; \
     $firefoxVersion = ($firefoxPackage[0] -split '\|')[1]; \
-    C:/build/Install-Firefox.ps1 -PackageToolsPath C:/ProgramData/chocolatey/lib/firefox/tools -Version $firefoxVersion
+    C:/build/Install-Firefox.ps1 -PackageToolsPath C:/ProgramData/chocolatey/lib/firefox/tools -Version $firefoxVersion; \
+    C:/build/Install-VCRuntime.ps1 -PackageToolsPath C:/ProgramData/chocolatey/lib/vcredist140/tools -WixSha256 $env:WIX_SHA256
 
 COPY windows/farah-common.nuspec C:/package/farah-common.nuspec
 RUN choco pack C:/package/farah-common.nuspec --output-directory C:/package --limit-output; \

@@ -13,7 +13,9 @@ Composer's official release and snapshot verification keys are preconfigured.
 Windows runtime tools use the newest versions offered by Chocolatey at build
 time. Firefox is registered from Chocolatey's newest package and extracted
 from that package's checksum-verified installer because the Firefox installer
-still hangs in a Windows container.
+still hangs in a Windows container. The Visual C++ runtime uses the same
+verified extraction approach because its installers are prohibitively slow
+under GitHub's Windows container isolation.
 Build variants support PHP 7.4 and PHP 8.0 through 8.5.
 PHP 7.4 through 8.1 no longer receive upstream security updates.
 The image includes a minimal Farah CMS application so the server starts without
