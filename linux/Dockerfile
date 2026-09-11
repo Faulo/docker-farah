@@ -1,5 +1,4 @@
 ARG PHP_VERSION=8.2
-ARG DEBIAN=bookworm
 
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS build
 
@@ -22,92 +21,51 @@ RUN case "$TARGETARCH" in \
         --property:UseAppHost=true \
         --property:DebugType=None
 
-FROM php:${PHP_VERSION}-apache-${DEBIAN}
+FROM debian:trixie-slim
+
 ARG PHP_VERSION
-ARG DEBIAN
 ARG TARGETARCH
+ARG DEBIAN_FRONTEND=noninteractive
 ENV PHP_VERSION=${PHP_VERSION}
 WORKDIR /var/www
 
-# Bullseye reached EOL on 2026-08-31, so use its final signed snapshot.
-RUN set -eux; \
-    if [ "$DEBIAN" = "bullseye" ]; then \
-        sed -i \
-            -e 's|^deb http://deb.debian.org/debian-security |deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260901T000000Z |' \
-            -e 's|^deb http://deb.debian.org/debian |deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260901T000000Z |' \
-            /etc/apt/sources.list; \
-    fi
-
-# Runtime dependencies
+# Package sources
 RUN apt-get update \
- && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    git \
-    imagemagick \
-    p7zip-full \
-    unzip \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-# PHP extensions
-RUN set -eux; \
-    savedAptMark="$(apt-mark showmanual)"; \
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        libc-client-dev \
-        libicu-dev \
-        libkrb5-dev \
-        libmagickwand-dev \
-        libpng-dev \
-        libxslt1-dev \
-        libzip-dev; \
-    pecl channel-update pecl.php.net; \
-    # ds 1.4 is the last release supporting PHP 7.4. \
-    if dpkg --compare-versions "$PHP_VERSION" lt "8.2"; then \
-        pecl install ds-1.4.0; \
-        docker-php-ext-enable ds; \
-    else \
-        pecl install ds; \
-        docker-php-ext-enable ds; \
-    fi; \
-    if dpkg --compare-versions "$PHP_VERSION" ge "8.4"; then \
-        pecl install imap; \
-        docker-php-ext-enable imap; \
-    else \
-        docker-php-ext-configure imap --with-kerberos --with-imap-ssl; \
-        docker-php-ext-install imap; \
-    fi; \
-    pecl install imagick; \
-    if dpkg --compare-versions "$PHP_VERSION" ge "8.5"; then \
-        docker-php-ext-enable imagick; \
-    else \
-        docker-php-ext-enable imagick opcache; \
-    fi; \
-    docker-php-ext-install \
-        exif \
-        xsl \
-        gd \
-        sockets \
-        mysqli \
-        intl \
-        zip; \
-    apt-mark auto '.*' > /dev/null; \
-    [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark > /dev/null; \
-    find /usr/local -type f \( -executable -o -name '*.so' \) -exec ldd '{}' ';' \
-        | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
-        | sort -u \
-        | xargs -rt dpkg-query --search \
-        | awk 'sub(":$", "", $1) { print $1 }' \
-        | sort -u \
-        | xargs -r apt-mark manual; \
-    apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
-    rm -rf /tmp/pear /var/lib/apt/lists/*
+ADD https://packages.sury.org/debsuryorg-archive-keyring.deb /tmp/debsuryorg-archive-keyring.deb
 
-COPY linux/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
+RUN dpkg -i /tmp/debsuryorg-archive-keyring.deb \
+ && echo 'deb [signed-by=/usr/share/keyrings/debsuryorg-archive-keyring.gpg] https://packages.sury.org/php/ trixie main' \
+      > /etc/apt/sources.list.d/php.list \
+ && rm -f /tmp/debsuryorg-archive-keyring.deb
+
+# Runtime tools
+COPY linux/farah-common.packages /tmp/farah-common.packages
+
+RUN apt-get update \
+ && xargs apt-get install -y --no-install-recommends < /tmp/farah-common.packages \
+ && rm -f /tmp/farah-common.packages \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY linux/farah-${PHP_VERSION}.packages /tmp/farah.packages
+
+RUN apt-get update \
+ && xargs apt-get install -y --no-install-recommends < /tmp/farah.packages \
+ && rm -f /tmp/farah.packages \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY linux/imagemagick-policy.xml /etc/ImageMagick-7/policy.xml
 
 # Farah
 COPY --from=build --chmod=755 /solution/common/Farah/bin/Release/net9.0/linux-*/publish/farah /farah/farah
 COPY --chmod=777 linux/farah/index.php /farah/index.php
-RUN git config --global --add safe.directory *
-ENV FARAH_AUTOLOAD_FILE="C:/www/vendor/autoload.php"
+RUN git config --global --add safe.directory '*'
+ENV FARAH_AUTOLOAD_FILE="/var/www/vendor/autoload.php"
 CMD ["/farah/farah"]
 
 # Composer
@@ -127,40 +85,33 @@ RUN set -eux; \
     rm -f /tmp/keys.dev.pub /tmp/keys.tags.pub
 
 # Default application
-RUN composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader; \
-    chown -R www-data:www-data /var/www
+RUN composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader \
+ && composer config license proprietary \
+ && install -d -o www-data -g www-data /var/www/html \
+ && rm -f /var/www/html/index.html \
+ && test -f /var/www/vendor/autoload.php \
+ && test "$(php -r 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;')" = "$PHP_VERSION" \
+ && ! dpkg-query --show --showformat='${binary:Package}\t${db:Status-Abbrev}\n' 'php[0-9]*' 2> /dev/null \
+        | awk '$2 == "ii" { print $1 }' \
+        | grep -Ev "^php${PHP_VERSION}(-|$)" \
+ && composer --version \
+ && firefox --version \
+ && git --version \
+ && 7z --help > /dev/null \
+ && unzip -v > /dev/null \
+ && chown -R www-data:www-data /var/www
 
 # Apache
 ENV SERVER_NAME=localhost
 EXPOSE 80
-COPY linux/php.ini /usr/local/etc/php/conf.d/custom.ini
+COPY linux/php.ini /etc/php/${PHP_VERSION}/apache2/conf.d/99-farah.ini
 COPY linux/apache.conf /etc/apache2/conf-available/custom.conf
-RUN a2enconf custom
-RUN php -v \
+COPY --chmod=755 linux/apache2-foreground /usr/local/bin/apache2-foreground
+RUN a2enconf custom \
+ && php -v \
  && php -m \
  && php --ri imap \
- && case "$DEBIAN" in \
-        bullseye) openssl version | grep -E '^OpenSSL 1\.1\.1'; curl --version | grep -E 'OpenSSL/1\.1\.1' ;; \
-        bookworm) openssl version | grep -E '^OpenSSL 3\.'; curl --version | grep -E 'OpenSSL/3\.' ;; \
-        *) echo "Unsupported Debian release: $DEBIAN" >&2; exit 1 ;; \
-    esac
-
-# Firefox
-ARG FIREFOX_VERSION=145.0.2
-ARG FIREFOX_SHA256_AMD64=b35e92aec8cbcf627fa3dcf4e865b0de977cc66e1a3593d91b6e5ae945d1f0b9
-ARG FIREFOX_SHA256_ARM64=5d78bea414a72a549875e06a9a0f0cac056e4ea44f3df3df967e26a4302e04f5
-
-RUN set -eux; \
-    case "$TARGETARCH" in \
-        amd64) firefoxArchitecture=linux-x86_64; firefoxSha256="$FIREFOX_SHA256_AMD64" ;; \
-        arm64) firefoxArchitecture=linux-aarch64; firefoxSha256="$FIREFOX_SHA256_ARM64" ;; \
-        *) echo "Unsupported Linux architecture: $TARGETARCH" >&2; exit 1 ;; \
-    esac; \
-    curl --fail --location --retry 3 \
-        "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/${firefoxArchitecture}/en-US/firefox-${FIREFOX_VERSION}.deb" \
-        --output /tmp/firefox.deb; \
-    echo "${firefoxSha256}  /tmp/firefox.deb" | sha256sum -c -; \
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /tmp/firefox.deb; \
-    rm -f /tmp/firefox.deb; \
-    rm -rf /var/lib/apt/lists/*
+ && php --ri imagick \
+ && php -m | grep -Fx 'Zend OPcache' \
+ && openssl version | grep -E '^OpenSSL 3\.' \
+ && curl --version | grep -E 'OpenSSL/3\.'

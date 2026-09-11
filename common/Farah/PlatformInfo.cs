@@ -11,9 +11,9 @@ sealed class PlatformInfo {
     public static PlatformInfo CreateWindows() {
         return new PlatformInfo(
             @"C:\www",
-            "powershell.exe",
-            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "[Environment]::SetEnvironmentVariable('SERVER_NAME', $env:SERVER_NAME, 'Machine'); [Environment]::SetEnvironmentVariable('FARAH_PAGE_TYPE', $env:FARAH_PAGE_TYPE, 'Machine'); Start-Service -Name Apache; Get-Content -LiteralPath (Join-Path $env:APPDATA 'Apache24/logs/error.log') -Wait -Tail 10"],
-            false);
+            @"C:\Users\ContainerAdministrator\AppData\Roaming\Apache24\bin\httpd.exe",
+            ["-DFOREGROUND"],
+            true);
     }
 
     public PlatformInfo(string composerWorkingDirectory, string serverExecutable, IReadOnlyList<string> serverArguments, bool forwardTerminationSignals) {
@@ -32,6 +32,8 @@ sealed class PlatformInfo {
     public string serverExecutable { get; }
 
     public IReadOnlyList<string> CreateServerArguments(string? serverName) {
-        return !forwardTerminationSignals ? serverArguments : ["-DSERVER_NAME=" + (serverName ?? string.Empty)];
+        return !forwardTerminationSignals
+            ? serverArguments
+            : [.. serverArguments, "-DSERVER_NAME=" + (serverName ?? string.Empty)];
     }
 }

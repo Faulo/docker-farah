@@ -3,19 +3,25 @@
 https://hub.docker.com/repository/docker/faulo/farah
 
 Linux and Windows images provide Apache, PHP, Composer, Git, ImageMagick,
-UnZip, 7-Zip, and Firefox 145.0.2. Linux PHP 7.4 and 8.0 use Debian Bullseye;
-newer Linux variants use Debian Bookworm. PHP 7.4 through 8.1 use OpenSSL
-1.1.1, while PHP 8.2 and newer use OpenSSL 3.
+UnZip, 7-Zip, and Firefox. All Linux variants use Debian Trixie Slim and
+install the selected PHP minor and its extensions from DEB.SURY.ORG. Linux
+runtime packages use the newest versions offered by their configured APT
+repositories at build time. Composer remains the current Composer 2 executable
+because Trixie's Composer dependencies cannot run on the oldest supported PHP
+minors.
 Composer's official release and snapshot verification keys are preconfigured.
-The Windows image includes the latest stable PowerShell 7 release, verified
-against its official published checksum during each build.
+Windows runtime tools use the newest versions offered by Chocolatey at build
+time. Firefox is registered from Chocolatey's newest package and extracted
+from that package's checksum-verified installer because the Firefox installer
+still hangs in a Windows container.
 Build variants support PHP 7.4 and PHP 8.0 through 8.5.
-The PHP 7.4 and 8.0 Linux variants use Debian Bullseye's final signed snapshot;
-these legacy variants no longer receive upstream security updates.
+PHP 7.4 through 8.1 no longer receive upstream security updates.
 The image includes a minimal Farah CMS application so the server starts without
 an application mount; `/slothsoft@farah/phpinfo` exposes its PHP information page.
 The Linux Dockerfile supports `linux/amd64` and `linux/arm64`. It does not include
 Wine; applications running in the image must provide native Linux executables.
+Linux runtime packages are declared in `linux/farah-common.packages` and the
+matching `linux/farah-<PHP_VERSION>.packages` manifest.
 
 ## Runtime startup
 

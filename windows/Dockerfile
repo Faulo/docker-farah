@@ -18,44 +18,47 @@ FROM mcr.microsoft.com/dotnet/framework/runtime:4.8-windowsservercore-ltsc2019
 
 SHELL ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell", "-NonInteractive", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-ARG VCREDIST_VERSION=14.50.35719
-ARG VCREDIST_X64_SHA256=8995548DFFFCDE7C49987029C764355612BA6850EE09A7B6F0FDDC85BDC5C280
-ARG VCREDIST_X86_SHA256=E7267C1BDF9237C0B4A28CF027C382B97AA909934F84F1C92D3FB9F04173B33E
-ARG WIX_SHA256=2C1888D5D1DBA377FC7FA14444CF556963747FF9A0A289A3599CF09DA03B9E2E
-ARG FIREFOX_VERSION=145.0.2
-ARG FIREFOX_SHA256=5947ae4611b873b724e72375d4445cc21337fadae90ab618d335de869d781637
-
 RUN Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')); \
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey installation failed' }
 
-# The redistributable installer hangs under Hyper-V isolation. Deploy its
-# verified DLL payloads directly and provide matching local package metadata.
-COPY windows/Install-VCRuntime.ps1 C:/build/Install-VCRuntime.ps1
-RUN C:/build/Install-VCRuntime.ps1
+COPY windows/Install-Firefox.ps1 C:/build/Install-Firefox.ps1
 
-COPY windows/vcredist140.nuspec C:/build/vcredist140.nuspec
-COPY windows/farah-common.nuspec C:/build/farah-common.nuspec
-RUN New-Item -ItemType Directory -Path C:/packages -Force | Out-Null; \
-    choco pack C:/build/vcredist140.nuspec --output-directory C:/packages --limit-output; \
-    if ($LASTEXITCODE -ne 0) { throw ('choco pack vcredist140 failed with exit code {0}' -f $LASTEXITCODE) }; \
-    choco pack C:/build/farah-common.nuspec --output-directory C:/build --limit-output; \
+# The Firefox installer still hangs under container isolation. Register the
+# newest Chocolatey package without its script, then extract its verified payload.
+RUN choco install 7zip --yes --no-progress --limit-output --source 'https://community.chocolatey.org/api/v2/'; \
+    if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco install 7zip failed with exit code {0}' -f $LASTEXITCODE) }; \
+    choco install firefox --yes --no-progress --limit-output --skip-powershell --source 'https://community.chocolatey.org/api/v2/'; \
+    if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco register firefox failed with exit code {0}' -f $LASTEXITCODE) }; \
+    $firefoxPackage = @(choco list --local-only --exact firefox --limit-output); \
+    if ($LASTEXITCODE -ne 0 -or $firefoxPackage.Count -ne 1) { throw 'Expected exactly one Chocolatey Firefox package' }; \
+    $firefoxVersion = ($firefoxPackage[0] -split '\|')[1]; \
+    C:/build/Install-Firefox.ps1 -PackageToolsPath C:/ProgramData/chocolatey/lib/firefox/tools -Version $firefoxVersion
+
+COPY windows/farah-common.nuspec C:/package/farah-common.nuspec
+RUN choco pack C:/package/farah-common.nuspec --output-directory C:/package --limit-output; \
     if ($LASTEXITCODE -ne 0) { throw ('choco pack farah-common failed with exit code {0}' -f $LASTEXITCODE) }; \
-    choco install farah-common --yes --no-progress --limit-output --source 'C:/packages;C:/build;https://community.chocolatey.org/api/v2/'; \
+    [xml]$commonManifest = Get-Content C:/package/farah-common.nuspec -Raw; \
+    $commonDependencies = $commonManifest.package.metadata.dependencies.dependency.id; \
+    foreach ($dependency in $commonDependencies) { \
+        choco install $dependency --yes --no-progress --limit-output --source 'https://community.chocolatey.org/api/v2/'; \
+        if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco install {0} failed with exit code {1}' -f $dependency, $LASTEXITCODE) } \
+    }; \
+    choco install farah-common --yes --no-progress --limit-output --ignore-dependencies --source C:/package; \
     if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco install farah-common failed with exit code {0}' -f $LASTEXITCODE) }; \
-    Remove-Item -Recurse -Force C:/build
-
-# Extract the browser without running its installer.
-RUN $url = 'https://archive.mozilla.org/pub/firefox/releases/{0}/win64/en-US/Firefox%20Setup%20{0}.exe' -f $env:FIREFOX_VERSION; \
-    Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile C:/firefox-installer.exe; \
-    $actualHash = (Get-FileHash C:/firefox-installer.exe -Algorithm SHA256).Hash; \
-    if ($actualHash -ne $env:FIREFOX_SHA256) { throw ('Firefox SHA-256 mismatch: {0}' -f $actualHash) }; \
-    7z x C:/firefox-installer.exe -oC:/Firefox -y | Out-Null; \
-    if ($LASTEXITCODE -notin 0, 1) { throw ('Firefox extraction failed with exit code {0}' -f $LASTEXITCODE) }; \
-    Remove-Item -Force C:/firefox-installer.exe; \
-    $actualVersion = (Get-Item C:/Firefox/core/firefox.exe).VersionInfo.ProductVersion; \
-    if ($actualVersion -ne $env:FIREFOX_VERSION) { throw ('Expected Firefox {0}, found {1}' -f $env:FIREFOX_VERSION, $actualVersion) }; \
+    $firefoxDirectory = 'C:/Firefox/core'; \
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); \
-    [Environment]::SetEnvironmentVariable('Path', ('C:/Firefox/core;' + $machinePath), 'Machine')
+    [Environment]::SetEnvironmentVariable('Path', ($firefoxDirectory + ';' + $machinePath), 'Machine'); \
+    Remove-Item -Recurse -Force C:/build,C:/package
+
+RUN $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User'); \
+    C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/bin/httpd.exe -v; if ($LASTEXITCODE -ne 0) { throw 'Apache smoke check failed' }; \
+    pwsh.exe -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion'; if ($LASTEXITCODE -ne 0) { throw 'PowerShell smoke check failed' }; \
+    firefox.exe --version; if ($LASTEXITCODE -ne 0) { throw 'Firefox smoke check failed' }; \
+    git.exe --version; if ($LASTEXITCODE -ne 0) { throw 'Git smoke check failed' }; \
+    curl.exe --version; if ($LASTEXITCODE -ne 0) { throw 'curl smoke check failed' }; \
+    magick.exe -version; if ($LASTEXITCODE -ne 0) { throw 'ImageMagick smoke check failed' }; \
+    7z.exe i | Out-Null; if ($LASTEXITCODE -ne 0) { throw '7-Zip smoke check failed' }; \
+    unzip.exe -v | Out-Null; if ($LASTEXITCODE -ne 0) { throw 'UnZip smoke check failed' }
 
 # Fonts required by browser-based rendering.
 ADD windows/FontsToAdd.tar C:/TMP/
@@ -79,9 +82,9 @@ EXPOSE 80
 COPY windows/farah-${PHP_VERSION}.nuspec C:/build/farah.nuspec
 RUN choco pack C:/build/farah.nuspec --output-directory C:/build --limit-output; \
     if ($LASTEXITCODE -ne 0) { throw ('choco pack farah failed with exit code {0}' -f $LASTEXITCODE) }; \
-    choco install farah --yes --no-progress --limit-output --source 'C:/packages;C:/build;https://community.chocolatey.org/api/v2/'; \
+    choco install farah --yes --no-progress --limit-output --source 'C:/build;https://community.chocolatey.org/api/v2/'; \
     if ($LASTEXITCODE -notin 0, 1641, 3010) { throw ('choco install farah failed with exit code {0}' -f $LASTEXITCODE) }; \
-    Remove-Item -Recurse -Force C:/packages, C:/build
+    Remove-Item -Recurse -Force C:/build
 
 # Composer's key update is interactive, so install the verified official keys.
 ARG COMPOSER_DEV_PUB_SHA256=2B2DF89FB2581E669B4668B451097D4A03F4DC2D7A06DF197554064494A90A31
@@ -98,9 +101,13 @@ RUN $composerHome = (composer config --global home).Trim(); \
 
 # Apache
 COPY windows/apache.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/custom.conf
-COPY windows/php-${PHP_VERSION}.conf C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/php.conf
+COPY windows/php.conf C:/build/php.conf
 COPY windows/mod_fcgid.so C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/modules/mod_fcgid.so
 RUN $httpdConfig = 'C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/httpd.conf'; \
+    $phpConfig = 'C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/conf/extra/php.conf'; \
+    $phpVersionPath = $env:PHP_VERSION.Replace('.', ''); \
+    (Get-Content C:/build/php.conf -Raw).Replace('{PHP_VERSION_PATH}', $phpVersionPath) | Set-Content $phpConfig; \
+    Remove-Item -Recurse -Force C:/build; \
     $includes = [Environment]::NewLine + 'Include conf/extra/custom.conf' + [Environment]::NewLine + 'Include conf/extra/php.conf'; \
     for ($attempt = 1; $attempt -le 30; $attempt++) { \
         try { Add-Content -Path $httpdConfig -Value $includes; break } \
@@ -109,7 +116,10 @@ RUN $httpdConfig = 'C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/con
             Start-Sleep -Seconds 1 \
         } \
     }; \
-    Set-Service -Name Apache -StartupType Manual
+    Set-Service -Name Apache -StartupType Manual; \
+    New-Item -ItemType Directory -Path C:/www/html -Force | Out-Null; \
+    C:/Users/ContainerAdministrator/AppData/Roaming/Apache24/bin/httpd.exe -t; \
+    if ($LASTEXITCODE -ne 0) { throw ('Apache configuration check failed with exit code {0}' -f $LASTEXITCODE) }
 
 # PHP extensions not supplied by the Chocolatey PHP package.
 COPY windows/ext-${PHP_VERSION}/ C:/tools/php/ext/
@@ -126,6 +136,10 @@ RUN $phpDir = Split-Path (Get-Command php | Select-Object -ExpandProperty Source
     if ($LASTEXITCODE -ne 0) { throw ('Creating composer.exe failed with exit code {0}' -f $LASTEXITCODE) }; \
     php -v; \
     if ($LASTEXITCODE -ne 0) { throw ('php -v failed with exit code {0}' -f $LASTEXITCODE) }; \
+    $phpPackage = @(choco list --local-only --exact php --limit-output); \
+    if ($LASTEXITCODE -ne 0 -or $phpPackage.Count -ne 1) { throw 'Expected exactly one Chocolatey PHP package' }; \
+    $installedPhpVersion = [version](($phpPackage[0] -split '\|')[1]); \
+    if (('{0}.{1}' -f $installedPhpVersion.Major, $installedPhpVersion.Minor) -ne $env:PHP_VERSION) { throw ('Expected Chocolatey PHP {0}, found {1}' -f $env:PHP_VERSION, $installedPhpVersion) }; \
     php -m; \
     if ($LASTEXITCODE -ne 0) { throw ('php -m failed with exit code {0}' -f $LASTEXITCODE) }; \
     $phpInfo = php -i; \
@@ -139,55 +153,13 @@ RUN $phpDir = Split-Path (Get-Command php | Select-Object -ExpandProperty Source
 # Default application
 RUN New-Item -ItemType Directory -Path C:/www/html -Force | Out-Null; \
     composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader; \
-    if ($LASTEXITCODE -ne 0) { throw ('composer require failed with exit code {0}' -f $LASTEXITCODE) }
+    if ($LASTEXITCODE -ne 0) { throw ('composer require failed with exit code {0}' -f $LASTEXITCODE) }; \
+    composer config license proprietary; \
+    if ($LASTEXITCODE -ne 0) { throw ('composer config failed with exit code {0}' -f $LASTEXITCODE) }
 
 # Farah
 COPY --from=build C:/solution/common/Farah/bin/Release/net9.0/win-x64/publish/ C:/farah/
 COPY windows/farah/index.php C:/farah/index.php
 RUN git config --global --add safe.directory *
-ENV FARAH_AUTOLOAD_FILE="/var/www/vendor/autoload.php"
+ENV FARAH_AUTOLOAD_FILE="C:/www/vendor/autoload.php"
 CMD ["C:/farah/farah.exe"]
-
-# PowerShell
-ARG POWERSHELL_MAJOR=7
-
-ADD https://github.com/PowerShell/PowerShell/releases.atom C:/powershell-releases.atom
-
-RUN $feed = Get-Content C:/powershell-releases.atom -Raw; \
-    $versionPattern = 'releases/tag/v(' + [regex]::Escape($env:POWERSHELL_MAJOR) + '\.\d+\.\d+)"'; \
-    $powershellVersions = [regex]::Matches($feed, $versionPattern) | \
-      ForEach-Object { [version]$_.Groups[1].Value } | \
-      Sort-Object -Unique -Descending; \
-    foreach ($candidate in $powershellVersions) { \
-        $candidateVersion = $candidate.ToString(); \
-        $candidateArchive = 'PowerShell-' + $candidateVersion + '-win-x64.zip'; \
-        $candidateUrl = 'https://github.com/PowerShell/PowerShell/releases/download/v' + $candidateVersion; \
-        curl.exe --fail --location --silent --show-error ($candidateUrl + '/hashes.sha256') -o C:/powershell-hashes; \
-        if ($LASTEXITCODE -eq 0) { \
-            $hashLine = Get-Content C:/powershell-hashes | Where-Object { $_ -match ('\*' + [regex]::Escape($candidateArchive) + '$') }; \
-            if ($hashLine) { \
-                $powershellVersion = $candidateVersion; \
-                $archiveName = $candidateArchive; \
-                $powershellUrl = $candidateUrl; \
-                break; \
-            } \
-        } \
-    }; \
-    if (-not $powershellVersion) { throw ('No complete stable PowerShell ' + $env:POWERSHELL_MAJOR + ' release found') }; \
-    $archive = 'C:/' + $archiveName; \
-    $archiveUrl = $powershellUrl + '/' + $archiveName; \
-    curl.exe --fail --location --retry 5 --retry-all-errors $archiveUrl -o $archive; \
-    if ($LASTEXITCODE -ne 0) { throw ('Failed to download ' + $archiveUrl) }; \
-    $expectedHash = ($hashLine -split '\s+')[0]; \
-    $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash; \
-    if ($actualHash -ne $expectedHash) { throw ('Checksum verification failed for ' + $archiveName) }; \
-    $destination = 'C:/Program Files/PowerShell/7'; \
-    New-Item -ItemType Directory -Force $destination | Out-Null; \
-    Expand-Archive -LiteralPath $archive -DestinationPath $destination; \
-    Remove-Item -LiteralPath $archive,C:/powershell-hashes,C:/powershell-releases.atom; \
-    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine'); \
-    [Environment]::SetEnvironmentVariable('Path', ($destination + ';' + $machinePath), 'Machine'); \
-    $env:Path = $destination + ';' + $env:Path; \
-    pwsh -NoLogo -NoProfile -Command \
-        'if ($PSVersionTable.PSVersion.Major -ne [int]$env:POWERSHELL_MAJOR) { exit 1 }'; \
-    if ($LASTEXITCODE -ne 0) { throw 'PowerShell smoke check failed' }

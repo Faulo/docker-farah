@@ -62,31 +62,24 @@ jobs:
                     - tag: "7.4"
                       build_args:
                           PHP_VERSION: "7.4"
-                          DEBIAN: bullseye
                     - tag: "8.0"
                       build_args:
                           PHP_VERSION: "8.0"
-                          DEBIAN: bullseye
                     - tag: "8.1"
                       build_args:
                           PHP_VERSION: "8.1"
-                          DEBIAN: bookworm
                     - tag: "8.2"
                       build_args:
                           PHP_VERSION: "8.2"
-                          DEBIAN: bookworm
                     - tag: "8.3"
                       build_args:
                           PHP_VERSION: "8.3"
-                          DEBIAN: bookworm
                     - tag: "8.4"
                       build_args:
                           PHP_VERSION: "8.4"
-                          DEBIAN: bookworm
                     - tag: "8.5"
                       build_args:
                           PHP_VERSION: "8.5"
-                          DEBIAN: bookworm
 
         uses: Faulo/workflows-docker/.github/workflows/publish.yml@85c13532c93e602f78adb72d8b08d3abd754519d
         with:

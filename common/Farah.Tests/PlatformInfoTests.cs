@@ -16,11 +16,11 @@ public sealed class PlatformInfoTests {
 
     [Test]
     public void CreatesWindowsApacheCommand() {
-        string[] arguments = ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "[Environment]::SetEnvironmentVariable('SERVER_NAME', $env:SERVER_NAME, 'Machine'); [Environment]::SetEnvironmentVariable('FARAH_PAGE_TYPE', $env:FARAH_PAGE_TYPE, 'Machine'); Start-Service -Name Apache; Get-Content -LiteralPath (Join-Path $env:APPDATA 'Apache24/logs/error.log') -Wait -Tail 10"];
+        string[] arguments = ["-DFOREGROUND", "-DSERVER_NAME=ignored.example"];
         var platform = PlatformInfo.CreateWindows();
 
         Assert.That(platform.CreateServerArguments("ignored.example"), Is.EqualTo(arguments));
-        Assert.That(platform.forwardTerminationSignals, Is.False);
-        Assert.That(platform.serverExecutable, Is.EqualTo("powershell.exe"));
+        Assert.That(platform.forwardTerminationSignals, Is.True);
+        Assert.That(platform.serverExecutable, Is.EqualTo(@"C:\Users\ContainerAdministrator\AppData\Roaming\Apache24\bin\httpd.exe"));
     }
 }
