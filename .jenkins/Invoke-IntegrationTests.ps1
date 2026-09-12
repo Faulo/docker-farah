@@ -56,12 +56,13 @@ $testData = @{
     Capabilities = $capabilities
 }
 
+$testsPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' 'tests'))
 $testFiles = @(
-    Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.Tests.ps1' -File |
+    Get-ChildItem -LiteralPath $testsPath -Filter '*.Tests.ps1' -File |
         Sort-Object FullName
 )
 if ($testFiles.Count -eq 0) {
-    throw "No Pester test files were found below $PSScriptRoot"
+    throw "No Pester test files were found in $testsPath"
 }
 
 $containers = @(

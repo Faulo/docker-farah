@@ -86,7 +86,7 @@ def pesterProject(config) {
                         deleteDir()
                     }
 
-                    exec "pwsh -NoLogo -NoProfile -NonInteractive -File tests/Install-Pester.ps1 -MajorVersion ${env.PESTER_MAJOR_VERSION}"
+                    exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Install-Pester.ps1 -MajorVersion ${env.PESTER_MAJOR_VERSION}"
 
                     for (def variant in variants) {
                         def safeTarget = target.name.replaceAll('[^A-Za-z0-9_.-]+', '-')
@@ -122,7 +122,7 @@ def pesterProject(config) {
                                                 withOptionalCredentials(bindings) {
                                                     echo "Testing ${env.PESTER_IMAGE} for ${variant} on ${target.name} (${target.os})"
                                                     try {
-                                                        exec 'pwsh -NoLogo -NoProfile -NonInteractive -File tests/Invoke-IntegrationTests.ps1'
+                                                        exec 'pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1'
                                                     } finally {
                                                         junit(
                                                             testResults: resultsPath,
