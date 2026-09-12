@@ -91,7 +91,7 @@ def pesterProject(config, dockerNamespace) {
 						withEnv(variantEnvironmentEntry + [
 							"DOCKER_NAMESPACE=${dockerNamespace}",
 							"DOCKER_TAG=${imageTag}",
-							"PESTER_IMAGE=${dockerNamespace}/${env.DOCKER_IMAGE}:${imageTag}"
+							"PESTER_IMAGE=${dockerNamespace}/${env.DOCKER_IMAGE}:${imageTag}",
 							"PESTER_DOCKER_CONTEXT=default",
 							"PESTER_EXPECTED_OS=${os}",
 							"PESTER_VARIANT=${variant}",
