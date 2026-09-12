@@ -77,8 +77,7 @@ def pesterProject(config) {
         error 'timeoutMinutes must be a positive integer'
     }
 
-    stage('Integration Tests') {
-        for (def target in targets) {
+    for (def target in targets) {
             stage("Host: ${target.name}") {
                 node(target.name) {
                     checkout scm
@@ -139,7 +138,6 @@ def pesterProject(config) {
                     }
                 }
             }
-        }
     }
 }
 
@@ -161,14 +159,11 @@ pipeline {
     }
 
     stages {
-        stage('Read pesterProject.properties') {
-            agent {
-                label 'Dende || Garl'
-            }
-
+        stage('Integration Tests') {
             steps {
                 script {
-                    def pesterConfig = readProperties file: '.jenkins/pesterProject.properties'
+                    def properties = readTrusted('.jenkins/pesterProject.properties')
+                    def pesterConfig = readProperties text: properties
 
                     withPester {
                         pesterProject(pesterConfig)
