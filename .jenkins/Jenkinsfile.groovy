@@ -1,3 +1,38 @@
+pipeline {
+    agent none
+
+    options {
+        disableConcurrentBuilds()
+        disableResume()
+        disableRestartFromStage()
+    }
+
+    parameters {
+        choice(
+            name: 'DOCKER_NAMESPACE',
+            choices: ['faulo', 'tmp'],
+            description: 'Docker image namespace to test'
+        )
+    }
+	
+	environment {
+		PESTER_MAJOR_VERSION = '6'
+	}
+
+    stages {
+        stage('Integration Tests') {
+            steps {
+                script {
+                    def properties = readTrusted('.jenkins/pesterProject.properties')
+                    def pesterConfig = readProperties text: properties
+
+					pesterProject(pesterConfig, params.DOCKER_NAMESPACE ?: 'faulo')
+                }
+            }
+        }
+    }
+}
+
 def requiredProperty(config, name) {
     def value = config[name]?.trim()
     if (!value) {
@@ -101,13 +136,13 @@ def pesterProject(config, dockerNamespace) {
 							withOptionalCredentials(bindings) {
 								stage("${env.PESTER_IMAGE}") {
 									catchError(
-										message: "Pester integration tests failed for ${variant} on ${target}",
+										message: "Pester integration tests failed for ${env.PESTER_IMAGE} on ${target}",
 										stageResult: 'FAILURE',
 										buildResult: 'FAILURE',
 										catchInterruptions: false
 									) {
 										timeout(time: timeoutMinutes, unit: 'MINUTES') {
-											echo "Testing ${env.PESTER_IMAGE} for ${variant} on ${target} (${os})"
+											echo "Testing ${env.PESTER_IMAGE} on ${target}"
 											try {
 												exec 'pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1'
 											} finally {
@@ -125,40 +160,5 @@ def pesterProject(config, dockerNamespace) {
 				}
 			}
 		}
-    }
-}
-
-pipeline {
-    agent none
-
-    options {
-        disableConcurrentBuilds()
-        disableResume()
-        disableRestartFromStage()
-    }
-
-    parameters {
-        choice(
-            name: 'DOCKER_NAMESPACE',
-            choices: ['faulo', 'tmp'],
-            description: 'Docker image namespace to test'
-        )
-    }
-	
-	environment {
-		PESTER_MAJOR_VERSION = '6'
-	}
-
-    stages {
-        stage('Integration Tests') {
-            steps {
-                script {
-                    def properties = readTrusted('.jenkins/pesterProject.properties')
-                    def pesterConfig = readProperties text: properties
-
-					pesterProject(pesterConfig, params.DOCKER_NAMESPACE ?: 'faulo')
-                }
-            }
-        }
     }
 }
