@@ -1,146 +1,177 @@
-def assertValue(actual, expected, description) {
-    if (actual != expected) {
-        error "${description}: expected '${expected}', got '${actual}'"
+def requiredProperty(config, name) {
+    def value = config[name]?.trim()
+    if (!value) {
+        error "Missing required property '${name}' in .jenkins/pesterProject.properties"
     }
+    return value
 }
 
-def candidateImage() {
-    return "$DOCKER_NAMESPACE/$DOCKER_IMAGE:$DOCKER_TAG"
+def commaSeparated(value) {
+    return value
+        ? value.split(',').collect { it.trim() }.findAll { it }
+        : []
 }
 
-def curlCommand(containerId, arguments) {
-    return "docker exec ${containerId} curl ${arguments}"
-}
-
-def installTestApplication(containerId) {
-    def applicationDirectory = isUnix() ? '/var/www/' : 'C:/www/'
-    def composer = isUnix() ? 'composer' : 'composer.exe'
-    exec("docker cp .jenkins/application/. ${containerId}:${applicationDirectory}")
-    exec("docker exec ${containerId} ${composer} dump-autoload --no-interaction --optimize")
-}
-
-def responseStatus(containerId, path, retry = false) {
-    def nullDevice = isUnix() ? '/dev/null' : 'NUL'
-    def writeOut = isUnix() ? "'%{http_code}'" : '"%{http_code}"'
-    def retryArguments = retry ? '--retry 30 --retry-connrefused --retry-delay 1 ' : ''
-    def errorArguments = retry ? '' : '--show-error '
-    def arguments = "--silent ${errorArguments}${retryArguments}--output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
-    return execStdout(curlCommand(containerId, arguments))
-}
-
-def responseBody(containerId, path) {
-    return execStdout(curlCommand(containerId, "--fail --silent --show-error http://localhost${path}"))
-}
-
-def responseMediaType(containerId, path) {
-    def nullDevice = isUnix() ? '/dev/null' : 'NUL'
-    def writeOut = isUnix() ? "'%{content_type}'" : '"%{content_type}"'
-    def arguments = "--fail --silent --show-error --output ${nullDevice} --write-out ${writeOut} http://localhost${path}"
-    return execStdout(curlCommand(containerId, arguments)).split(';', 2)[0].trim()
-}
-
-def testPowerShell() {
-    def major = execStdout("docker run --rm ${candidateImage()} pwsh -NoLogo -NoProfile -Command \"(Get-Host).Version.Major\"")
-    assertValue(major, '7', 'PowerShell major version')
-}
-
-def testPhpVersion() {
-    def minor = execStdout("docker run --rm ${candidateImage()} php -r \"echo PHP_MAJOR_VERSION, '.', PHP_MINOR_VERSION;\"")
-    assertValue(minor, '8.5', 'PHP minor version')
-}
-
-def testLinuxDistribution() {
-    exec("docker run --rm ${candidateImage()} grep --fixed-strings VERSION_CODENAME=trixie /etc/os-release")
-}
-
-def testChocolateyPackage(packageName) {
-    def installedPackage = execStdout("docker run --rm ${candidateImage()} choco list --local-only --exact ${packageName} --limit-output")
-    if (!installedPackage.toLowerCase().startsWith("${packageName.toLowerCase()}|")) {
-        error "Chocolatey package ${packageName} is not installed: '${installedPackage}'"
-    }
-}
-
-def testWindowsPackages() {
-    for (def packageName in ['powershell-core', 'firefox', 'vcredist140']) {
-        testChocolateyPackage(packageName)
-    }
-}
-
-def testImage(pageType, expectedMediaType) {
-    def containerId = execStdout("docker run --detach --env COMPOSER_UPDATE=skip --env FARAH_PAGE_TYPE=${pageType} ${candidateImage()}")
-    try {
-        installTestApplication(containerId)
-
-        try {
-            responseStatus(containerId, '/', true)
-        } catch (Exception exception) {
-            exec("docker logs ${containerId}")
-            error "${candidateImage()} did not start serving HTTP"
+def parseTargets(config) {
+    return commaSeparated(requiredProperty(config, 'targets')).collect { entry ->
+        def parts = entry.split(':', 2)
+        if (parts.size() != 2 || !parts[0].trim() || !(parts[1].trim() in ['linux', 'windows'])) {
+            error "Invalid Pester target '${entry}'; expected JenkinsNode:linux or JenkinsNode:windows"
         }
-
-        def pagePaths = ['/phpinfo/', '/consumer-sitemap/']
-        for (def path in pagePaths) {
-            assertValue(responseStatus(containerId, path), '200', "HTTP status for ${path}")
-            assertValue(responseMediaType(containerId, path), expectedMediaType, "Content-Type for ${path} with FARAH_PAGE_TYPE=${pageType}")
-        }
-
-        def phpInfo = responseBody(containerId, '/phpinfo/')
-        if (!phpInfo.contains('<title>PHP') || !phpInfo.contains('phpinfo()')) {
-            error '/phpinfo/ did not return HTML phpinfo output'
-        }
-
-        assertValue(responseStatus(containerId, '/'), '501', 'HTTP status for /')
-        assertValue(responseStatus(containerId, '/AboutMe/'), '410', 'HTTP status for /AboutMe/')
-    } finally {
-        exec("docker rm --force --volumes ${containerId}")
+        return [name: parts[0].trim(), os: parts[1].trim()]
     }
 }
 
-properties([
-    parameters([
+def parseCredentialPairs(value, description, bindingFactory) {
+    return commaSeparated(value).collect { entry ->
+        def parts = entry.split('\\|', 2)
+        if (parts.size() != 2 || !parts[0].trim() || !parts[1].trim()) {
+            error "Invalid ${description} credential binding '${entry}'; expected variable|credential-id"
+        }
+        return bindingFactory(parts[0].trim(), parts[1].trim())
+    }
+}
+
+def credentialBindings(config) {
+    def bindings = []
+    bindings.addAll(parseCredentialPairs(
+        config.usernamePasswordCredentials,
+        'username/password',
+        { variable, id ->
+            usernamePassword(
+                credentialsId: id,
+                usernameVariable: "${variable}_USR",
+                passwordVariable: "${variable}_PSW"
+            )
+        }
+    ))
+    bindings.addAll(parseCredentialPairs(
+        config.stringCredentials,
+        'string',
+        { variable, id -> string(credentialsId: id, variable: variable) }
+    ))
+    return bindings
+}
+
+def withOptionalCredentials(bindings, Closure body) {
+    if (bindings) {
+        withCredentials(bindings, body)
+    } else {
+        body()
+    }
+}
+
+def withPester(Closure body) {
+    withEnv(['PESTER_MAJOR_VERSION=6'], body)
+}
+
+def pesterProject(config) {
+    def targets = parseTargets(config)
+    def variants = commaSeparated(requiredProperty(config, 'variants'))
+    def variantEnvironment = config.variantEnvironment?.trim()
+    def timeoutMinutes = (config.timeoutMinutes?.trim() ?: '60') as Integer
+    def dockerNamespace = params.DOCKER_NAMESPACE ?: 'faulo'
+    def bindings = credentialBindings(config)
+
+    if (timeoutMinutes <= 0) {
+        error 'timeoutMinutes must be a positive integer'
+    }
+
+    stage('Integration Tests') {
+        for (def target in targets) {
+            stage("Host: ${target.name}") {
+                node(target.name) {
+                    checkout scm
+                    dir('.reports') {
+                        deleteDir()
+                    }
+
+                    exec "pwsh -NoLogo -NoProfile -NonInteractive -File tests/Install-Pester.ps1 -MajorVersion ${env.PESTER_MAJOR_VERSION}"
+
+                    for (def variant in variants) {
+                        def safeTarget = target.name.replaceAll('[^A-Za-z0-9_.-]+', '-')
+                        def safeVariant = variant.replaceAll('[^A-Za-z0-9_.-]+', '-')
+                        def resultsPath = ".reports/pester-${safeTarget}-${target.os}-${safeVariant}.xml"
+                        def capabilities = config["capabilities.${target.name}"]?.trim() ?: ''
+                        def variantEnvironmentEntry = variantEnvironment
+                            ? ["${variantEnvironment}=${variant}"]
+                            : []
+                        def imageTagTemplate = dockerNamespace == 'tmp'
+                            ? config.candidateImageTag?.trim()
+                            : config.publishedImageTag?.trim()
+                        def imageTag = (imageTagTemplate ?: 'latest').replace('<variant>', variant)
+
+                        stage("${target.os}: ${variant}") {
+                            catchError(
+                                message: "Pester integration tests failed for ${variant} on ${target.name}",
+                                stageResult: 'FAILURE',
+                                buildResult: 'FAILURE',
+                                catchInterruptions: false
+                            ) {
+                                timeout(time: timeoutMinutes, unit: 'MINUTES') {
+                                    withEnv(variantEnvironmentEntry + [
+                                        "DOCKER_NAMESPACE=${dockerNamespace}",
+                                        'PESTER_DOCKER_CONTEXT=default',
+                                        "PESTER_EXPECTED_OS=${target.os}",
+                                        "PESTER_VARIANT=${variant}",
+                                        "PESTER_CAPABILITIES=${capabilities}",
+                                        "PESTER_RESULTS_PATH=${resultsPath}"
+                                    ]) {
+                                        withEnvFile {
+                                            withEnv(["PESTER_IMAGE=${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE}:${imageTag}"]) {
+                                                withOptionalCredentials(bindings) {
+                                                    echo "Testing ${env.PESTER_IMAGE} for ${variant} on ${target.name} (${target.os})"
+                                                    try {
+                                                        exec 'pwsh -NoLogo -NoProfile -NonInteractive -File tests/Invoke-IntegrationTests.ps1'
+                                                    } finally {
+                                                        junit(
+                                                            testResults: resultsPath,
+                                                            allowEmptyResults: false
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pipeline {
+    agent none
+
+    options {
+        disableConcurrentBuilds()
+        disableResume()
+        disableRestartFromStage()
+    }
+
+    parameters {
         choice(
             name: 'DOCKER_NAMESPACE',
             choices: ['faulo', 'tmp'],
             description: 'Docker image namespace to test'
         )
-    ]),
-    disableConcurrentBuilds(),
-    disableResume()
-])
+    }
 
-def hosts = ['Dende', 'Garl']
-def dockerNamespace = params.DOCKER_NAMESPACE ?: 'faulo'
-def dockerTag = dockerNamespace == 'tmp' ? 'latest' : '8.5'
+    stages {
+        stage('Read pesterProject.properties') {
+            agent {
+                label 'Dende || Garl'
+            }
 
-stage('Integration Tests') {
-    for (def host in hosts) {
-        stage("Host: ${host}") {
-            node(host) {
-                deleteDir()
-                checkout scm
+            steps {
+                script {
+                    def pesterConfig = readProperties file: '.jenkins/pesterProject.properties'
 
-                catchError(
-                    message: "Integration test failed on ${host}",
-                    stageResult: 'FAILURE',
-                    buildResult: 'FAILURE',
-                    catchInterruptions: false
-                ) {
-                    withEnv([
-                        "DOCKER_NAMESPACE=${dockerNamespace}",
-                        "DOCKER_TAG=${dockerTag}"
-                    ]) {
-                        withEnvFile {
-                            echo "Testing ${candidateImage()} on ${host}"
-                            testPhpVersion()
-                            if (isUnix()) {
-                                testLinuxDistribution()
-                            } else {
-                                testPowerShell()
-                                testWindowsPackages()
-                            }
-                            testImage('xml', 'application/xhtml+xml')
-                            testImage('html', 'text/html')
-                        }
+                    withPester {
+                        pesterProject(pesterConfig)
                     }
                 }
             }
