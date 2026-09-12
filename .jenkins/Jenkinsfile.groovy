@@ -87,35 +87,34 @@ def pesterProject(config, dockerNamespace) {
 						: config.publishedImageTag?.trim()
 					def imageTag = (imageTagTemplate ?: 'latest').replace('<variant>', variant)
 
-					stage("${os}: ${variant}") {
-						catchError(
-							message: "Pester integration tests failed for ${variant} on ${target}",
-							stageResult: 'FAILURE',
-							buildResult: 'FAILURE',
-							catchInterruptions: false
-						) {
-							timeout(time: timeoutMinutes, unit: 'MINUTES') {
-								withEnv(variantEnvironmentEntry + [
-									"DOCKER_NAMESPACE=${dockerNamespace}",
-									"DOCKER_TAG=${imageTag}",
-									"PESTER_DOCKER_CONTEXT=default",
-									"PESTER_EXPECTED_OS=${os}",
-									"PESTER_VARIANT=${variant}",
-									"PESTER_CAPABILITIES=${capabilities}",
-									"PESTER_RESULTS_PATH=${resultsPath}"
-								]) {
-									withEnvFile {
-										withEnv(["PESTER_IMAGE=${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE}:${env.DOCKER_TAG}"]) {
-											withOptionalCredentials(bindings) {
-												echo "Testing ${env.PESTER_IMAGE} for ${variant} on ${target} (${os})"
-												try {
-													exec 'pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1'
-												} finally {
-													junit(
-														testResults: resultsPath,
-														allowEmptyResults: false
-													)
-												}
+					withEnvFile {
+						withEnv(variantEnvironmentEntry + [
+							"DOCKER_NAMESPACE=${dockerNamespace}",
+							"DOCKER_TAG=${imageTag}",
+							"PESTER_IMAGE=${dockerNamespace}/${env.DOCKER_IMAGE}:${imageTag}"
+							"PESTER_DOCKER_CONTEXT=default",
+							"PESTER_EXPECTED_OS=${os}",
+							"PESTER_VARIANT=${variant}",
+							"PESTER_CAPABILITIES=${capabilities}",
+							"PESTER_RESULTS_PATH=${resultsPath}"
+						]) {
+							withOptionalCredentials(bindings) {
+								stage("${env.PESTER_IMAGE}") {
+									catchError(
+										message: "Pester integration tests failed for ${variant} on ${target}",
+										stageResult: 'FAILURE',
+										buildResult: 'FAILURE',
+										catchInterruptions: false
+									) {
+										timeout(time: timeoutMinutes, unit: 'MINUTES') {
+											echo "Testing ${env.PESTER_IMAGE} for ${variant} on ${target} (${os})"
+											try {
+												exec 'pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1'
+											} finally {
+												junit(
+													testResults: resultsPath,
+													allowEmptyResults: false
+												)
 											}
 										}
 									}
