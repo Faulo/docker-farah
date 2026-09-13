@@ -131,19 +131,25 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
     }
 
     It 'satisfies the platform runtime contract' {
-        $powerShellMajor = Invoke-DockerOutput @(
-            'run', '--rm', $Image,
-            'pwsh', '-NoLogo', '-NoProfile', '-Command', '(Get-Host).Version.Major'
-        )
-        $powerShellMajor | Should -Be '7'
-
-        foreach ($package in @('powershell-core', 'firefox', 'vcredist140')) {
-            $installed = Invoke-DockerOutput @(
-                'run', '--rm', $Image,
-                'choco', 'list', '--local-only', '--exact', $package, '--limit-output'
-            )
-            $installed.ToLowerInvariant() | Should -Match "^$([Regex]::Escape($package.ToLowerInvariant()))\\|"
+        if ($ExpectedOs -eq 'linux') {
+            Invoke-Docker @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=trixie', '/etc/os-release')
         }
+		
+        if ($ExpectedOs -eq 'windows') {
+			$powerShellMajor = Invoke-DockerOutput @(
+				'run', '--rm', $Image,
+				'pwsh', '-NoLogo', '-NoProfile', '-Command', '(Get-Host).Version.Major'
+			)
+			$powerShellMajor | Should -Be '7'
+
+			foreach ($package in @('powershell-core', 'firefox', 'vcredist140')) {
+				$installed = Invoke-DockerOutput @(
+					'run', '--rm', $Image,
+					'choco', 'list', '--local-only', '--exact', $package, '--limit-output'
+				)
+				$installed.ToLowerInvariant() | Should -Match "^$([Regex]::Escape($package.ToLowerInvariant()))\\|"
+			}
+		}
     }
 }
 
