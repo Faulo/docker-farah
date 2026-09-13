@@ -1,26 +1,18 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [string] $Path,
-
+    [string] $Namespace,
+    
     [Parameter(Mandatory)]
-    [string] $Image,
+    [string] $Name,
 
-    [Parameter(Mandatory)]
-    [ValidateSet('linux', 'windows')]
-    [string] $Os,
+    [string] $Variant = 'latest',
+    
+    [string] $Context = 'default',
+    
+    [string] $TestsPath = 'tests',
 
-    [Parameter(Mandatory)]
-    [string] $Variant,
-
-    [string] $Capabilities = '',
-
-    [Parameter(Mandatory)]
-    [string] $ResultsPath,
-
-    [Parameter(Mandatory)]
-    [ValidateRange(1, [int]::MaxValue)]
-    [int] $MajorVersion
+    [string] $ResultsPath = '.reports/report.xml'
 )
 
 Set-StrictMode -Version Latest
@@ -28,12 +20,8 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 $installedPester = Get-Module -ListAvailable -Name Pester |
-    Where-Object { $_.Version.Major -eq $MajorVersion } |
     Sort-Object Version -Descending |
     Select-Object -First 1
-if ($null -eq $installedPester) {
-    throw "Pester $MajorVersion.* is not installed"
-}
 Import-Module $installedPester.Path -ErrorAction Stop
 
 $resolvedResultsPath = [IO.Path]::GetFullPath(
@@ -43,20 +31,16 @@ $resolvedResultsPath = [IO.Path]::GetFullPath(
 $resultsDirectory = Split-Path -Parent $resolvedResultsPath
 New-Item -ItemType Directory -Path $resultsDirectory -Force | Out-Null
 
-$resolvedCapabilities = @(
-    $Capabilities -split ',' |
-        ForEach-Object { $_.Trim() } |
-        Where-Object { $_ }
-)
-
 $testData = @{
-    Image = $Image
-    Os = $Os
+    Context = $Context
+    Namespace = $Namespace
+    Name = $Name
     Variant = $Variant
-    Capabilities = $resolvedCapabilities
+    Image = $Namespace + "/" + $Name + ":" + $Variant
+    Os = & docker --context $Context version --format '{{.Server.Os}}'
 }
 
-$testsPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' $Path))
+$testsPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' $TestsPath))
 $testFiles = @(
     Get-ChildItem -LiteralPath $testsPath -Filter '*.Tests.ps1' -File |
         Sort-Object FullName
@@ -79,7 +63,7 @@ $configuration.Output.Verbosity = 'Detailed'
 $configuration.TestResult.Enabled = $true
 $configuration.TestResult.OutputFormat = 'JUnitXml'
 $configuration.TestResult.OutputPath = $resolvedResultsPath
-$configuration.TestResult.TestSuiteName = "Docker $($testData.Image) [$($testData.Os), $($testData.Variant)]"
+$configuration.TestResult.TestSuiteName = "Docker $($testData.Image) [$($testData.Context), $($testData.Variant)]"
 
 $result = Invoke-Pester -Configuration $configuration
 

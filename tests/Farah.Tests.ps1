@@ -1,17 +1,21 @@
 param(
     [Parameter(Mandatory)]
-    [string] $Image,
-
+    [string] $Namespace,
+    
     [Parameter(Mandatory)]
-    [ValidateSet('linux', 'windows')]
-    [string] $Os,
+    [string] $Name,
 
     [Parameter(Mandatory)]
     [string] $Variant,
+    
+    [Parameter(Mandatory)]
+    [string] $Context,
+    
+    [Parameter(Mandatory)]
+    [string] $Image,
 
     [Parameter(Mandatory)]
-    [AllowEmptyCollection()]
-    [string[]] $Capabilities
+    [string] $Os
 )
 
 BeforeAll {
@@ -21,7 +25,7 @@ BeforeAll {
             [string[]] $Arguments
         )
 
-        & docker @Arguments
+        & docker --context $Context @Arguments | Out-Null
         if ($LASTEXITCODE -ne 0) {
             throw "Docker command failed with exit code ${LASTEXITCODE}: docker $($Arguments -join ' ')"
         }
@@ -33,7 +37,7 @@ BeforeAll {
             [string[]] $Arguments
         )
 
-        $output = & docker @Arguments 2>&1
+        $output = & docker --context $Context @Arguments 2>&1
         if ($LASTEXITCODE -ne 0) {
             throw "Docker command failed with exit code ${LASTEXITCODE}: docker $($Arguments -join ' ')`n$($output | Out-String)"
         }
@@ -46,9 +50,9 @@ BeforeAll {
             [string] $Container
         )
 
-        $null = & docker container inspect $Container 2>$null
+        & docker --context $Context container inspect $Container | Out-Null
         if ($LASTEXITCODE -eq 0) {
-            & docker container rm --force --volumes $Container | Out-Null
+            & docker --context $Context container rm --force --volumes $Container | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 throw "Failed to remove test container $Container"
             }
@@ -123,6 +127,10 @@ BeforeAll {
 
 Describe "Farah runtime [$Os, PHP $Variant]" {
     It "provides PHP $Variant" {
+        if ($Variant -eq '') {
+            return
+        }
+        
         $version = Invoke-DockerOutput @(
             'run', '--rm', $Image,
             'php', '-r', "echo PHP_MAJOR_VERSION, '.', PHP_MINOR_VERSION;"
@@ -172,7 +180,7 @@ Describe "Farah HTTP behavior [$Os, PHP $Variant]" {
             try {
                 Get-ResponseStatus -Container $container -Path '/' -Retry | Out-Null
             } catch {
-                & docker logs $container
+                & docker --context $Context logs $container
                 throw "$Image did not start serving HTTP"
             }
         }

@@ -110,12 +110,7 @@ def pesterProject(config, dockerNamespace, pesterVersion) {
                         def safeTarget = target.replaceAll('[^A-Za-z0-9_.-]+', '-')
                         def safeVariant = variant.replaceAll('[^A-Za-z0-9_.-]+', '-')
                         def resultsPath = ".reports/pester-${safeTarget}-${os}-${safeVariant}.xml"
-                        def capabilities = config["capabilities.${target}"]?.trim() ?: ''
-                        def imageTagTemplate = dockerNamespace == 'tmp'
-                            ? config.candidateImageTag?.trim()
-                            : config.publishedImageTag?.trim()
-                        def imageTag = (imageTagTemplate ?: 'latest').replace('<variant>', variant)
-                        def image = "${dockerNamespace}/${env.DOCKER_IMAGE}:${imageTag}"
+                        def image = "${dockerNamespace}/${env.DOCKER_IMAGE}:${variant}"
 
                         withOptionalCredentials(bindings) {
                             stage(image) {
@@ -128,7 +123,7 @@ def pesterProject(config, dockerNamespace, pesterVersion) {
                                     timeout(time: timeoutMinutes, unit: 'MINUTES') {
                                         echo "Testing ${image} on ${target}"
                                         try {
-                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Path tests -Image ${image} -Os ${os} -Variant ${variant} -Capabilities ${capabilities} -ResultsPath ${resultsPath} -MajorVersion ${pesterVersion}"
+                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Namespace ${dockerNamespace} -Name ${env.DOCKER_IMAGE} -Variant ${variant} -TestsPath tests -ResultsPath ${resultsPath}"
                                         } finally {
                                             junit(
                                                 testResults: resultsPath,
