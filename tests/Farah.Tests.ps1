@@ -128,12 +128,12 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
             'php', '-r', "echo PHP_MAJOR_VERSION, '.', PHP_MINOR_VERSION;"
         )
 
-        $version | Should -Be $Variant
+        $version | Should -Be "${Variant}.invalid"
     }
 
     It 'satisfies the platform runtime contract' {
         if ($Os -eq 'linux') {
-            Invoke-Docker @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=trixie', '/etc/os-release')
+            Invoke-Docker @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=bullseye', '/etc/os-release')
         }
 		
         if ($Os -eq 'windows') {
@@ -141,7 +141,7 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 				'run', '--rm', $Image,
 				'pwsh', '-NoLogo', '-NoProfile', '-Command', '(Get-Host).Version.Major'
 			)
-			$powerShellMajor | Should -Be '7'
+			$powerShellMajor | Should -Be '99'
 
 			foreach ($package in @('powershell-core', 'firefox', 'vcredist140')) {
 				$installed = Invoke-DockerOutput @(
@@ -156,8 +156,8 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 
 Describe "Farah HTTP behavior [$Os, PHP $Variant]" {
     Context 'with FARAH_PAGE_TYPE=<PageType>' -ForEach @(
-        @{ PageType = 'xml'; ExpectedMediaType = 'application/xhtml+xml' }
-        @{ PageType = 'html'; ExpectedMediaType = 'text/html' }
+        @{ PageType = 'xml'; ExpectedMediaType = 'application/x-pester-probe' }
+        @{ PageType = 'html'; ExpectedMediaType = 'text/x-pester-probe' }
     ) {
         BeforeAll {
             $container = $null
@@ -194,12 +194,12 @@ Describe "Farah HTTP behavior [$Os, PHP $Variant]" {
         It 'serves PHP information' {
             $phpInfo = Get-ResponseBody -Container $container -Path '/phpinfo/'
 
-            $phpInfo | Should -Match '<title>PHP'
+            $phpInfo | Should -Match '<title>Pester reporting probe'
             $phpInfo | Should -Match 'phpinfo\(\)'
         }
 
         It 'reports the expected application statuses' {
-            Get-ResponseStatus -Container $container -Path '/' | Should -Be '501'
+            Get-ResponseStatus -Container $container -Path '/' | Should -Be '599'
             Get-ResponseStatus -Container $container -Path '/AboutMe/' | Should -Be '410'
         }
     }
