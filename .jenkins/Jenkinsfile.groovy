@@ -53,7 +53,7 @@ def parseCredentialPairs(value, description, bindingFactory) {
         if (parts.size() != 2 || !parts[0].trim() || !parts[1].trim()) {
             error "Invalid ${description} credential binding '${entry}'; expected variable|credential-id"
         }
-        return bindingFactory(parts[0].trim(), parts[1].trim())
+        return bindingFactory(parts[0].trim(), parts[1].trim(), env.PESTER_MAJOR_VERSION)
     }
 }
 
@@ -86,16 +86,12 @@ def withOptionalCredentials(bindings, Closure body) {
     }
 }
 
-def pesterProject(config, dockerNamespace) {
+def pesterProject(config, dockerNamespace, pesterVersion) {
     def targets = commaSeparated(requiredProperty(config, 'targets'))
     def variants = commaSeparated(requiredProperty(config, 'variants'))
     def variantEnvironment = config.variantEnvironment?.trim()
     def timeoutMinutes = (config.timeoutMinutes?.trim() ?: '60') as Integer
     def bindings = credentialBindings(config)
-
-    if (timeoutMinutes <= 0) {
-        error 'timeoutMinutes must be a positive integer'
-    }
 
     for (def target in targets) {
 		stage("Host: ${target}") {
@@ -109,7 +105,7 @@ def pesterProject(config, dockerNamespace) {
 				}
 
 				withEnvFile {
-					exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Install-Pester.ps1 -MajorVersion ${env.PESTER_MAJOR_VERSION}"
+					exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Install-Pester.ps1 -MajorVersion ${pesterVersion}"
 
 					for (def variant in variants) {
 						def safeTarget = target.replaceAll('[^A-Za-z0-9_.-]+', '-')
@@ -134,7 +130,7 @@ def pesterProject(config, dockerNamespace) {
 							"PESTER_RESULTS_PATH=${resultsPath}"
 						]) {
 							withOptionalCredentials(bindings) {
-								stage("${image}") {
+								stage(image) {
 									catchError(
 										message: "Pester integration tests failed for ${image} on ${target}",
 										stageResult: 'FAILURE',
