@@ -8,6 +8,8 @@ param(
 
     [string] $Variant = 'latest',
     
+    [switch] $Pull = $false,
+    
     [string] $Context = 'default',
     
     [string] $TestsPath = 'tests',
@@ -31,12 +33,18 @@ $resolvedResultsPath = [IO.Path]::GetFullPath(
 $resultsDirectory = Split-Path -Parent $resolvedResultsPath
 New-Item -ItemType Directory -Path $resultsDirectory -Force | Out-Null
 
+$Image = $Namespace + "/" + $Name + ":" + $Variant
+
+if ($Pull) {
+    & docker --context $Context pull $Image
+}
+
 $testData = @{
     Context = $Context
     Namespace = $Namespace
     Name = $Name
     Variant = $Variant
-    Image = $Namespace + "/" + $Name + ":" + $Variant
+    Image = $Image
     Os = & docker --context $Context version --format '{{.Server.Os}}'
 }
 

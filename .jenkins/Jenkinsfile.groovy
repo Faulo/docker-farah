@@ -7,14 +7,6 @@ pipeline {
         disableRestartFromStage()
     }
 
-    parameters {
-        choice(
-            name: 'DOCKER_NAMESPACE',
-            choices: ['faulo', 'tmp'],
-            description: 'Docker image namespace to test'
-        )
-    }
-
     stages {
         stage('Integration Tests') {
             steps {
@@ -22,7 +14,7 @@ pipeline {
                     def properties = readTrusted('.jenkins/pesterProject.properties')
                     def pesterConfig = readProperties text: properties
 
-                    pesterProject(pesterConfig, params.DOCKER_NAMESPACE ?: 'faulo', 6)
+                    pesterProject(pesterConfig, 6)
                 }
             }
         }
@@ -82,7 +74,7 @@ def withOptionalCredentials(bindings, Closure body) {
     }
 }
 
-def pesterProject(config, dockerNamespace, pesterVersion) {
+def pesterProject(config, pesterVersion) {
     def targets = commaSeparated(requiredProperty(config, 'targets'))
     def variants = commaSeparated(requiredProperty(config, 'variants'))
     def timeoutMinutes = (config.timeoutMinutes?.trim() ?: '60') as Integer
@@ -110,7 +102,8 @@ def pesterProject(config, dockerNamespace, pesterVersion) {
                         def safeTarget = target.replaceAll('[^A-Za-z0-9_.-]+', '-')
                         def safeVariant = variant.replaceAll('[^A-Za-z0-9_.-]+', '-')
                         def resultsPath = ".reports/pester-${safeTarget}-${os}-${safeVariant}.xml"
-                        def image = "${dockerNamespace}/${env.DOCKER_IMAGE}:${variant}"
+                        
+                        def image = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE}:${variant}"
 
                         withOptionalCredentials(bindings) {
                             stage(image) {
@@ -123,7 +116,7 @@ def pesterProject(config, dockerNamespace, pesterVersion) {
                                     timeout(time: timeoutMinutes, unit: 'MINUTES') {
                                         echo "Testing ${image} on ${target}"
                                         try {
-                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Namespace ${dockerNamespace} -Name ${env.DOCKER_IMAGE} -Variant ${variant} -TestsPath tests -ResultsPath ${resultsPath}"
+                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Namespace ${env.DOCKER_NAMESPACE} -Name ${env.DOCKER_IMAGE} -Variant ${variant} -Pull -TestsPath tests -ResultsPath ${resultsPath}"
                                         } finally {
                                             junit(
                                                 testResults: resultsPath,
