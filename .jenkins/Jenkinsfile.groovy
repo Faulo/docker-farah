@@ -14,10 +14,6 @@ pipeline {
             description: 'Docker image namespace to test'
         )
     }
-	
-	environment {
-		PESTER_MAJOR_VERSION = '6'
-	}
 
     stages {
         stage('Integration Tests') {
@@ -26,7 +22,7 @@ pipeline {
                     def properties = readTrusted('.jenkins/pesterProject.properties')
                     def pesterConfig = readProperties text: properties
 
-					pesterProject(pesterConfig, params.DOCKER_NAMESPACE ?: 'faulo', env.PESTER_MAJOR_VERSION)
+                    pesterProject(pesterConfig, params.DOCKER_NAMESPACE ?: 'faulo', 6)
                 }
             }
         }
@@ -53,7 +49,7 @@ def parseCredentialPairs(value, description, bindingFactory) {
         if (parts.size() != 2 || !parts[0].trim() || !parts[1].trim()) {
             error "Invalid ${description} credential binding '${entry}'; expected variable|credential-id"
         }
-        return bindingFactory(parts[0].trim(), parts[1].trim(), env.PESTER_MAJOR_VERSION)
+        return bindingFactory(parts[0].trim(), parts[1].trim())
     }
 }
 
@@ -89,72 +85,64 @@ def withOptionalCredentials(bindings, Closure body) {
 def pesterProject(config, dockerNamespace, pesterVersion) {
     def targets = commaSeparated(requiredProperty(config, 'targets'))
     def variants = commaSeparated(requiredProperty(config, 'variants'))
-    def variantEnvironment = config.variantEnvironment?.trim()
     def timeoutMinutes = (config.timeoutMinutes?.trim() ?: '60') as Integer
     def bindings = credentialBindings(config)
 
+    if (timeoutMinutes <= 0) {
+        error 'timeoutMinutes must be a positive integer'
+    }
+
     for (def target in targets) {
-		stage("Host: ${target}") {
-			node(target) {
-				def os = isWindows() ? 'windows' : 'linux'
-			
-				checkout scm
-				
-				dir('.reports') {
-					deleteDir()
-				}
+        stage("Host: ${target}") {
+            node(target) {
+                def os = isWindows() ? 'windows' : 'linux'
 
-				withEnvFile {
-					exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Install-Pester.ps1 -MajorVersion ${pesterVersion}"
+                checkout scm
 
-					for (def variant in variants) {
-						def safeTarget = target.replaceAll('[^A-Za-z0-9_.-]+', '-')
-						def safeVariant = variant.replaceAll('[^A-Za-z0-9_.-]+', '-')
-						def resultsPath = ".reports/pester-${safeTarget}-${os}-${safeVariant}.xml"
-						def capabilities = config["capabilities.${target}"]?.trim() ?: ''
-						def variantEnvironmentEntry = variantEnvironment
-							? ["${variantEnvironment}=${variant}"]
-							: []
-						def imageTagTemplate = dockerNamespace == 'tmp'
-							? config.candidateImageTag?.trim()
-							: config.publishedImageTag?.trim()
-						def imageTag = (imageTagTemplate ?: 'latest').replace('<variant>', variant)
-						
-						def image = "${dockerNamespace}/${env.DOCKER_IMAGE}:${imageTag}"
+                dir('.reports') {
+                    deleteDir()
+                }
 
-						withEnv(variantEnvironmentEntry + [
-							"PESTER_IMAGE=${image}",
-							"PESTER_OS=${os}",
-							"PESTER_VARIANT=${variant}",
-							"PESTER_CAPABILITIES=${capabilities}",
-							"PESTER_RESULTS_PATH=${resultsPath}"
-						]) {
-							withOptionalCredentials(bindings) {
-								stage(image) {
-									catchError(
-										message: "Pester integration tests failed for ${image} on ${target}",
-										stageResult: 'FAILURE',
-										buildResult: 'FAILURE',
-										catchInterruptions: false
-									) {
-										timeout(time: timeoutMinutes, unit: 'MINUTES') {
-											echo "Testing ${image} on ${target}"
-											try {
-												exec 'pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Path tests'
-											} finally {
-												junit(
-													testResults: resultsPath,
-													allowEmptyResults: false
-												)
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+                withEnvFile {
+                    exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Install-Pester.ps1 -MajorVersion ${pesterVersion}"
+
+                    for (def variant in variants) {
+                        def safeTarget = target.replaceAll('[^A-Za-z0-9_.-]+', '-')
+                        def safeVariant = variant.replaceAll('[^A-Za-z0-9_.-]+', '-')
+                        def resultsPath = ".reports/pester-${safeTarget}-${os}-${safeVariant}.xml"
+                        def capabilities = config["capabilities.${target}"]?.trim() ?: ''
+                        def imageTagTemplate = dockerNamespace == 'tmp'
+                            ? config.candidateImageTag?.trim()
+                            : config.publishedImageTag?.trim()
+                        def imageTag = (imageTagTemplate ?: 'latest').replace('<variant>', variant)
+                        def image = "${dockerNamespace}/${env.DOCKER_IMAGE}:${imageTag}"
+
+                        withOptionalCredentials(bindings) {
+                            stage(image) {
+                                catchError(
+                                    message: "Pester integration tests failed for ${image} on ${target}",
+                                    stageResult: 'FAILURE',
+                                    buildResult: 'FAILURE',
+                                    catchInterruptions: false
+                                ) {
+                                    timeout(time: timeoutMinutes, unit: 'MINUTES') {
+                                        echo "Testing ${image} on ${target}"
+                                        try {
+                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Path tests -Image ${image} -Os ${os} -Variant ${variant} -Capabilities ${capabilities} -ResultsPath ${resultsPath} -MajorVersion ${pesterVersion}"
+                                        } finally {
+                                            junit(
+                                                testResults: resultsPath,
+                                                allowEmptyResults: false,
+                                                skipMarkingBuildUnstable: false
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

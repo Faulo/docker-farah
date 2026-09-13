@@ -10,6 +10,7 @@ param(
     [string] $Variant,
 
     [Parameter(Mandatory)]
+    [AllowEmptyCollection()]
     [string[]] $Capabilities
 )
 

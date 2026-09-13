@@ -1,54 +1,59 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [string] $Path
+    [string] $Path,
+
+    [Parameter(Mandatory)]
+    [string] $Image,
+
+    [Parameter(Mandatory)]
+    [ValidateSet('linux', 'windows')]
+    [string] $Os,
+
+    [Parameter(Mandatory)]
+    [string] $Variant,
+
+    [string] $Capabilities = '',
+
+    [Parameter(Mandatory)]
+    [string] $ResultsPath,
+
+    [Parameter(Mandatory)]
+    [ValidateRange(1, [int]::MaxValue)]
+    [int] $MajorVersion
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$requiredEnvironment = @(
-    'PESTER_IMAGE'
-    'PESTER_OS'
-    'PESTER_VARIANT'
-    'PESTER_RESULTS_PATH'
-)
-
-foreach ($name in $requiredEnvironment) {
-    $value = [Environment]::GetEnvironmentVariable($name)
-    if ([string]::IsNullOrWhiteSpace($value)) {
-        throw "Required environment variable $name is missing or empty"
-    }
-}
-
 $installedPester = Get-Module -ListAvailable -Name Pester |
+    Where-Object { $_.Version.Major -eq $MajorVersion } |
     Sort-Object Version -Descending |
     Select-Object -First 1
 if ($null -eq $installedPester) {
-    throw "Pester is not installed"
+    throw "Pester $MajorVersion.* is not installed"
 }
 Import-Module $installedPester.Path -ErrorAction Stop
 
-$resultsPath = [IO.Path]::GetFullPath(
-    [Environment]::GetEnvironmentVariable('PESTER_RESULTS_PATH'),
+$resolvedResultsPath = [IO.Path]::GetFullPath(
+    $ResultsPath,
     (Get-Location).Path
 )
-$resultsDirectory = Split-Path -Parent $resultsPath
+$resultsDirectory = Split-Path -Parent $resolvedResultsPath
 New-Item -ItemType Directory -Path $resultsDirectory -Force | Out-Null
 
-$capabilitiesValue = [Environment]::GetEnvironmentVariable('PESTER_CAPABILITIES')
-$capabilities = @(
-    $capabilitiesValue -split ',' |
+$resolvedCapabilities = @(
+    $Capabilities -split ',' |
         ForEach-Object { $_.Trim() } |
         Where-Object { $_ }
 )
 
 $testData = @{
-    Image = [Environment]::GetEnvironmentVariable('PESTER_IMAGE')
-    Os = [Environment]::GetEnvironmentVariable('PESTER_OS')
-    Variant = [Environment]::GetEnvironmentVariable('PESTER_VARIANT')
-    Capabilities = $capabilities
+    Image = $Image
+    Os = $Os
+    Variant = $Variant
+    Capabilities = $resolvedCapabilities
 }
 
 $testsPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' $Path))
@@ -68,11 +73,26 @@ $containers = @(
 
 $configuration = New-PesterConfiguration
 $configuration.Run.Container = $containers
-$configuration.Run.Exit = $true
+$configuration.Run.Exit = $false
+$configuration.Run.PassThru = $true
 $configuration.Output.Verbosity = 'Detailed'
 $configuration.TestResult.Enabled = $true
 $configuration.TestResult.OutputFormat = 'JUnitXml'
-$configuration.TestResult.OutputPath = $resultsPath
+$configuration.TestResult.OutputPath = $resolvedResultsPath
 $configuration.TestResult.TestSuiteName = "Docker $($testData.Image) [$($testData.Os), $($testData.Variant)]"
 
-Invoke-Pester -Configuration $configuration
+$result = Invoke-Pester -Configuration $configuration
+
+if ($null -eq $result) {
+    throw 'Pester returned no result'
+}
+if ($result.TotalCount -eq 0) {
+    throw 'Pester discovered no tests'
+}
+if ($result.FailedContainersCount -gt 0 -or $result.FailedBlocksCount -gt 0) {
+    throw "Pester infrastructure failed: $($result.FailedContainersCount) container(s), $($result.FailedBlocksCount) block(s)"
+}
+
+# Test failures are represented by JUnit and make Jenkins unstable. Only
+# infrastructure failures should make this process exit unsuccessfully.
+exit 0
