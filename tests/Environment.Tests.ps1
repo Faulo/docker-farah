@@ -18,7 +18,7 @@ Describe "Docker integration environment [$Os, $Variant]" {
         $actualOs = & docker version --format '{{.Server.Os}}' 2>&1
         $dockerExitCode = $LASTEXITCODE
 
-        $dockerExitCode | Should -Be 0 -Because "Docker context '$DockerContext' must be reachable"
+        $dockerExitCode | Should -Be 0 -Because "Docker must be reachable"
         ($actualOs | Out-String).Trim() | Should -Be $Os
     }
 
