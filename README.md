@@ -91,4 +91,9 @@ from `.env`. The published `latest` tag is the same PHP 8.5 variant as the
 published `8.5` tag. Jenkins tests every configured published variant; local
 release-candidate testing intentionally covers only `tmp/farah:latest`.
 
+Rider exposes four shared run configurations under **Integration Tests** for
+running the Garl or Dende suite against either the local `tmp` image or the
+published production image. Production configurations pull the image before
+testing it.
+
 Only images in the disposable `tmp/` namespace should be used for local builds.
