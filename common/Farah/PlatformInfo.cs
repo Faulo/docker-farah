@@ -8,14 +8,6 @@ sealed class PlatformInfo {
         ? CreateWindows()
         : new PlatformInfo("/var/www", "apache2-foreground", [], true);
 
-    public static PlatformInfo CreateWindows() {
-        return new PlatformInfo(
-            @"C:\www",
-            @"C:\Users\ContainerAdministrator\AppData\Roaming\Apache24\bin\httpd.exe",
-            ["-DFOREGROUND"],
-            true);
-    }
-
     public PlatformInfo(string composerWorkingDirectory, string serverExecutable, IReadOnlyList<string> serverArguments, bool forwardTerminationSignals) {
         this.composerWorkingDirectory = composerWorkingDirectory;
         this.serverExecutable = serverExecutable;
@@ -30,6 +22,14 @@ sealed class PlatformInfo {
     public IReadOnlyList<string> serverArguments { get; }
 
     public string serverExecutable { get; }
+
+    public static PlatformInfo CreateWindows() {
+        return new PlatformInfo(
+            @"C:\www",
+            @"C:\Users\ContainerAdministrator\AppData\Roaming\Apache24\bin\httpd.exe",
+            ["-DFOREGROUND"],
+            true);
+    }
 
     public IReadOnlyList<string> CreateServerArguments(string? serverName) {
         return !forwardTerminationSignals
