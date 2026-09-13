@@ -143,7 +143,7 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 			)
 			$powerShellMajor | Should -Be '7'
 
-			foreach ($package in @('powershell-core', 'firefox', 'vcredist140')) {
+			foreach ($package in @('powershell-core', 'firefox-no', 'vcredist140')) {
 				$installed = Invoke-DockerOutput @(
 					'run', '--rm', $Image,
 					'choco', 'list', '--local-only', '--exact', $package, '--limit-output'
