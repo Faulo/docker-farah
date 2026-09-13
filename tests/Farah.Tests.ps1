@@ -133,7 +133,7 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 
     It 'satisfies the platform runtime contract' {
         if ($Os -eq 'linux') {
-            Invoke-Docker @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=bullseye', '/etc/os-release')
+            Invoke-Docker @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=trixie', '/etc/os-release')
         }
 		
         if ($Os -eq 'windows') {
@@ -143,7 +143,7 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 			)
 			$powerShellMajor | Should -Be '7'
 
-			foreach ($package in @('powershell-core', 'firefuchs', 'vcredist140')) {
+			foreach ($package in @('powershell-core', 'firefox', 'vcredist140')) {
 				$installed = Invoke-DockerOutput @(
 					'run', '--rm', $Image,
 					'choco', 'list', '--local-only', '--exact', $package, '--limit-output'
