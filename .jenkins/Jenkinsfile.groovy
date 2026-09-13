@@ -102,7 +102,7 @@ def pesterProject(config, pesterVersion) {
                         def safeTarget = target.replaceAll('[^A-Za-z0-9_.-]+', '-')
                         def safeVariant = variant.replaceAll('[^A-Za-z0-9_.-]+', '-')
                         def resultsPath = ".reports/pester-${safeTarget}-${os}-${safeVariant}.xml"
-                        
+
                         def image = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE}:${variant}"
 
                         withOptionalCredentials(bindings) {
