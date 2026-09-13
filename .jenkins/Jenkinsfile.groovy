@@ -103,45 +103,46 @@ def pesterProject(config, dockerNamespace) {
 				def os = isWindows() ? 'windows' : 'linux'
 			
 				checkout scm
+				
 				dir('.reports') {
 					deleteDir()
 				}
 
-				exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Install-Pester.ps1 -MajorVersion ${env.PESTER_MAJOR_VERSION}"
+				withEnvFile {
+					exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Install-Pester.ps1 -MajorVersion ${env.PESTER_MAJOR_VERSION}"
 
-				for (def variant in variants) {
-					def safeTarget = target.replaceAll('[^A-Za-z0-9_.-]+', '-')
-					def safeVariant = variant.replaceAll('[^A-Za-z0-9_.-]+', '-')
-					def resultsPath = ".reports/pester-${safeTarget}-${os}-${safeVariant}.xml"
-					def capabilities = config["capabilities.${target}"]?.trim() ?: ''
-					def variantEnvironmentEntry = variantEnvironment
-						? ["${variantEnvironment}=${variant}"]
-						: []
-					def imageTagTemplate = dockerNamespace == 'tmp'
-						? config.candidateImageTag?.trim()
-						: config.publishedImageTag?.trim()
-					def imageTag = (imageTagTemplate ?: 'latest').replace('<variant>', variant)
+					for (def variant in variants) {
+						def safeTarget = target.replaceAll('[^A-Za-z0-9_.-]+', '-')
+						def safeVariant = variant.replaceAll('[^A-Za-z0-9_.-]+', '-')
+						def resultsPath = ".reports/pester-${safeTarget}-${os}-${safeVariant}.xml"
+						def capabilities = config["capabilities.${target}"]?.trim() ?: ''
+						def variantEnvironmentEntry = variantEnvironment
+							? ["${variantEnvironment}=${variant}"]
+							: []
+						def imageTagTemplate = dockerNamespace == 'tmp'
+							? config.candidateImageTag?.trim()
+							: config.publishedImageTag?.trim()
+						def imageTag = (imageTagTemplate ?: 'latest').replace('<variant>', variant)
+						
+						def image = "${dockerNamespace}/${env.DOCKER_IMAGE}:${imageTag}"
 
-					withEnvFile {
 						withEnv(variantEnvironmentEntry + [
-							"DOCKER_NAMESPACE=${dockerNamespace}",
-							"DOCKER_TAG=${imageTag}",
-							"PESTER_IMAGE=${dockerNamespace}/${env.DOCKER_IMAGE}:${imageTag}",
+							"PESTER_IMAGE=${image}",
 							"PESTER_OS=${os}",
 							"PESTER_VARIANT=${variant}",
 							"PESTER_CAPABILITIES=${capabilities}",
 							"PESTER_RESULTS_PATH=${resultsPath}"
 						]) {
 							withOptionalCredentials(bindings) {
-								stage("${env.PESTER_IMAGE}") {
+								stage("${image}") {
 									catchError(
-										message: "Pester integration tests failed for ${env.PESTER_IMAGE} on ${target}",
+										message: "Pester integration tests failed for ${image} on ${target}",
 										stageResult: 'FAILURE',
 										buildResult: 'FAILURE',
 										catchInterruptions: false
 									) {
 										timeout(time: timeoutMinutes, unit: 'MINUTES') {
-											echo "Testing ${env.PESTER_IMAGE} on ${target}"
+											echo "Testing ${image} on ${target}"
 											try {
 												exec 'pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Path tests'
 											} finally {
