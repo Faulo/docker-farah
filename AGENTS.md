@@ -8,9 +8,9 @@ Shared instructions for coding agents. Project-specific information is kept in [
 
 This repository builds Linux and Windows variants of the same image. Shared build inputs belong in `common/`; platform-specific inputs belong in `linux/` or `windows/`. Both variants use the repository root as their build context.
 
-Always select Docker daemons explicitly: use `--context linux` or `--context windows` for local work, and the named contexts required by the release cycle for remote validation. Treat the root `.env` as authoritative for the image name, test arguments, and test command. Use `docker context ls` to discover other registered daemons; verify a daemon before relying on it.
+Always select Docker daemons explicitly. Release-candidate work uses Docker context `garl` for Linux and `dende` for Windows. Treat the root `.env` as authoritative for the published namespace and image name. Use `docker context ls` to discover other registered daemons; verify a daemon before relying on it.
 
-Build, tag, overwrite, or remove only images in the disposable `tmp/` namespace. Treat images in every other namespace as published artifacts. The release cycle may pull `faulo/` images for final verification, but agents must not build or retag them locally.
+Build, tag, overwrite, or remove only images in the disposable `tmp/` namespace. `tmp` images are always daemon-local: never push or pull them. Treat images in every other namespace as published artifacts. The release cycle may pull `faulo/` images for verification, but agents must not build or retag them locally.
 
 ### Entry points and implementation
 
@@ -28,32 +28,36 @@ Update `README.md` whenever image contents, prerequisites, or public commands ch
 
 Builds can be large, network-dependent, and platform-specific. A Windows image requires a compatible Windows daemon. Run every applicable target, but do not conceal unavailable coverage: report each skipped target and the concrete reason it could not run.
 
+Install Pester 6 with `.jenkins/Install-Pester.ps1` when necessary. `.jenkins/Invoke-IntegrationTests.ps1` reads the default namespace and image name from `.env`. Pass `-Namespace tmp` without `-Pull` for a local release candidate, and pass `-Pull` for a published image. Always pass `-Context garl` or `-Context dende` when invoking the runner from another machine.
+
+Release-candidate coverage is intentionally shallow: build and test only PHP 8.5 as `tmp/farah:latest` on Garl and Dende. Jenkins is production-only and tests every variant in `.jenkins/pesterProject.properties`; never use Jenkins to test `tmp`.
+
 ### Release cycle
 
 When the user has authorized the required release, Git, CI, and deployment operations, complete every phase in order.
 
 #### Phase 1: Establish the design contract
 
-1. Add or update the integration coverage in `.jenkins/Jenkinsfile.groovy` so it expresses the intended behavior.
+1. Add or update the Pester integration coverage under `tests/` so it expresses the intended behavior.
 2. Commit and push the test contract without the implementation.
-3. Run this image's job under `https://ci.slothsoft.net/job/jenkins/` with `DOCKER_NAMESPACE=faulo`, and inspect the complete console log.
+3. Run the new coverage against the currently published image on both Garl and Dende with `pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Pull -Context <context>`, and inspect the complete output.
 4. The new coverage must fail against the currently published image for the intended reason. If it passes, strengthen the contract and repeat this phase.
 5. Do not proceed on an infrastructure failure or unrelated regression; establish the expected product failure first.
 
 #### Phase 2: Build and validate the candidate
 
 1. Implement the change and run the applicable local tests.
-2. Build candidate images in the `tmp` namespace on Docker context `dende` for Windows and `garl` for Linux.
-3. Run this image's Jenkins job with `DOCKER_NAMESPACE=tmp`, and inspect the complete console log.
-4. If the candidate fails, fix it, rebuild both applicable candidate images, and repeat the integration run.
+2. Build PHP 8.5 as `tmp/farah:latest` on Docker context `garl` for Linux and `dende` for Windows. Do not push the images.
+3. Run `pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Namespace tmp -Context <context>` for both contexts and inspect the complete output. Do not use Jenkins for candidate validation.
+4. If the candidate fails, fix it, rebuild both candidate images, and repeat both integration runs.
 5. Proceed only after the complete candidate integration run passes.
 
 #### Phase 3: Publish and revalidate
 
 1. Commit and push the implementation, then watch the complete GitHub CI image build.
 2. If GitHub CI fails, fix the issue and revalidate the candidate from Phase 2 before pushing the correction.
-3. After GitHub CI passes, pull the newly published `faulo` images on Docker contexts `dende` and `garl`.
-4. Run this image's Jenkins job with `DOCKER_NAMESPACE=faulo`, and inspect the complete console log.
+3. After GitHub CI passes, run this image's Jenkins job and inspect the complete console log. Jenkins pulls and tests every configured published variant on Dende and Garl.
+4. Confirm that the published `latest` tag, which represents PHP 8.5, passes `pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Pull -Context <context>` on both contexts.
 5. If publication or final integration fails, fix the issue and repeat the full cycle from Phase 1.
 6. If the feature was based on a ticket, update the ticket's body to reflect the shipped design and mark it complete.
 

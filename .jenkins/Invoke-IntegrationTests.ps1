@@ -1,9 +1,7 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
     [string] $Namespace,
     
-    [Parameter(Mandatory)]
     [string] $Name,
 
     [string] $Variant = 'latest',
@@ -21,9 +19,33 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
+$environmentPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../.env'))
+$environment = @{}
+foreach ($line in Get-Content -LiteralPath $environmentPath) {
+    if ($line -match '^\s*(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<value>.*)\s*$') {
+        $environment[$Matches.name] = $Matches.value
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($Namespace)) {
+    $Namespace = $environment.DOCKER_NAMESPACE
+}
+if ([string]::IsNullOrWhiteSpace($Name)) {
+    $Name = $environment.DOCKER_IMAGE
+}
+if ([string]::IsNullOrWhiteSpace($Namespace)) {
+    throw "Docker namespace is missing; pass -Namespace or set DOCKER_NAMESPACE in $environmentPath"
+}
+if ([string]::IsNullOrWhiteSpace($Name)) {
+    throw "Docker image name is missing; pass -Name or set DOCKER_IMAGE in $environmentPath"
+}
+
 $installedPester = Get-Module -ListAvailable -Name Pester |
     Sort-Object Version -Descending |
     Select-Object -First 1
+if ($null -eq $installedPester) {
+    throw 'Pester is not installed'
+}
 Import-Module $installedPester.Path -ErrorAction Stop
 
 $resolvedResultsPath = [IO.Path]::GetFullPath(
@@ -37,6 +59,14 @@ $Image = $Namespace + "/" + $Name + ":" + $Variant
 
 if ($Pull) {
     & docker --context $Context pull $Image
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to pull image $Image from Docker context $Context"
+    }
+}
+
+$os = & docker --context $Context version --format '{{.Server.Os}}'
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to query Docker context $Context"
 }
 
 $testData = @{
@@ -45,7 +75,7 @@ $testData = @{
     Name = $Name
     Variant = $Variant
     Image = $Image
-    Os = & docker --context $Context version --format '{{.Server.Os}}'
+    Os = $os
 }
 
 $testsPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' $TestsPath))
@@ -85,6 +115,8 @@ if ($result.FailedContainersCount -gt 0 -or $result.FailedBlocksCount -gt 0) {
     throw "Pester infrastructure failed: $($result.FailedContainersCount) container(s), $($result.FailedBlocksCount) block(s)"
 }
 
-# Test failures are represented by JUnit and make Jenkins unstable. Only
-# infrastructure failures should make this process exit unsuccessfully.
+if ($result.FailedCount -gt 0) {
+    exit 1
+}
+
 exit 0

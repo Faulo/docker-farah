@@ -116,7 +116,7 @@ def pesterProject(config, pesterVersion) {
                                     timeout(time: timeoutMinutes, unit: 'MINUTES') {
                                         echo "Testing ${image} on ${target}"
                                         try {
-                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Namespace ${env.DOCKER_NAMESPACE} -Name ${env.DOCKER_IMAGE} -Variant ${variant} -Pull -TestsPath tests -ResultsPath ${resultsPath}"
+                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Variant ${variant} -Pull -TestsPath tests -ResultsPath ${resultsPath}"
                                         } finally {
                                             junit(
                                                 testResults: resultsPath,

@@ -127,16 +127,14 @@ BeforeAll {
 
 Describe "Farah runtime [$Os, PHP $Variant]" {
     It "provides PHP $Variant" {
-        if ($Variant -eq '') {
-            return
-        }
+        $expectedVariant = $Variant -eq 'latest' ? '8.5' : $Variant
         
         $version = Invoke-DockerOutput @(
             'run', '--rm', $Image,
             'php', '-r', "echo PHP_MAJOR_VERSION, '.', PHP_MINOR_VERSION;"
         )
 
-        $version | Should -Be $Variant
+        $version | Should -Be $expectedVariant
     }
 
     It 'satisfies the platform runtime contract' {

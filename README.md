@@ -61,13 +61,34 @@ The launcher unit tests require a .NET 9 SDK but do not require Docker:
 dotnet test docker-farah.sln --configuration Release
 ```
 
-Both Dockerfiles use the repository root as build context and require explicit
-Docker contexts:
+Install Pester 6 once before running the integration suite:
 
 ```text
-docker --context linux build --pull --platform linux/amd64 --tag tmp/farah:latest --file linux/Dockerfile .
-docker --context linux build --pull --platform linux/arm64 --tag tmp/farah:latest --file linux/Dockerfile .
-docker --context windows build --pull --tag tmp/farah:latest --file windows/Dockerfile .
+pwsh ./.jenkins/Install-Pester.ps1 -MajorVersion 6
 ```
+
+Release candidates use only the latest PHP variant and remain local to the
+Linux daemon on Garl and the Windows daemon on Dende. Both Dockerfiles use the
+repository root as their build context:
+
+```text
+docker --context garl build --pull --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file linux/Dockerfile .
+docker --context dende build --pull --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file windows/Dockerfile .
+pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Namespace tmp -Context garl
+pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Namespace tmp -Context dende
+```
+
+Do not push or pull `tmp` images. To test the published `latest` image instead,
+pull it on each daemon before running the suite:
+
+```text
+pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Pull -Context garl
+pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Pull -Context dende
+```
+
+The integration runner reads `DOCKER_NAMESPACE` and `DOCKER_IMAGE` defaults
+from `.env`. The published `latest` tag is the same PHP 8.5 variant as the
+published `8.5` tag. Jenkins tests every configured published variant; local
+release-candidate testing intentionally covers only `tmp/farah:latest`.
 
 Only images in the disposable `tmp/` namespace should be used for local builds.
