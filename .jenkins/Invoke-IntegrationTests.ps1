@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory)]
+    [string] $Path
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -7,8 +10,7 @@ $ProgressPreference = 'SilentlyContinue'
 
 $requiredEnvironment = @(
     'PESTER_IMAGE'
-    'PESTER_DOCKER_CONTEXT'
-    'PESTER_EXPECTED_OS'
+    'PESTER_OS'
     'PESTER_VARIANT'
     'PESTER_RESULTS_PATH'
 )
@@ -20,17 +22,11 @@ foreach ($name in $requiredEnvironment) {
     }
 }
 
-$pesterMajorVersion = [Environment]::GetEnvironmentVariable('PESTER_MAJOR_VERSION')
-if ([string]::IsNullOrWhiteSpace($pesterMajorVersion)) {
-    throw 'Required environment variable PESTER_MAJOR_VERSION is missing or empty'
-}
-
 $installedPester = Get-Module -ListAvailable -Name Pester |
-    Where-Object { $_.Version.Major -eq [int] $pesterMajorVersion } |
     Sort-Object Version -Descending |
     Select-Object -First 1
 if ($null -eq $installedPester) {
-    throw "Pester $pesterMajorVersion.* is not installed"
+    throw "Pester is not installed"
 }
 Import-Module $installedPester.Path -ErrorAction Stop
 
@@ -50,13 +46,12 @@ $capabilities = @(
 
 $testData = @{
     Image = [Environment]::GetEnvironmentVariable('PESTER_IMAGE')
-    DockerContext = [Environment]::GetEnvironmentVariable('PESTER_DOCKER_CONTEXT')
-    ExpectedOs = [Environment]::GetEnvironmentVariable('PESTER_EXPECTED_OS')
+    Os = [Environment]::GetEnvironmentVariable('PESTER_OS')
     Variant = [Environment]::GetEnvironmentVariable('PESTER_VARIANT')
     Capabilities = $capabilities
 }
 
-$testsPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' 'tests'))
+$testsPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' $Path))
 $testFiles = @(
     Get-ChildItem -LiteralPath $testsPath -Filter '*.Tests.ps1' -File |
         Sort-Object FullName
@@ -78,6 +73,6 @@ $configuration.Output.Verbosity = 'Detailed'
 $configuration.TestResult.Enabled = $true
 $configuration.TestResult.OutputFormat = 'JUnitXml'
 $configuration.TestResult.OutputPath = $resultsPath
-$configuration.TestResult.TestSuiteName = "Docker $($testData.Image) [$($testData.ExpectedOs), $($testData.Variant)]"
+$configuration.TestResult.TestSuiteName = "Docker $($testData.Image) [$($testData.Os), $($testData.Variant)]"
 
 Invoke-Pester -Configuration $configuration

@@ -3,11 +3,8 @@ param(
     [string] $Image,
 
     [Parameter(Mandatory)]
-    [string] $DockerContext,
-
-    [Parameter(Mandatory)]
     [ValidateSet('linux', 'windows')]
-    [string] $ExpectedOs,
+    [string] $Os,
 
     [Parameter(Mandatory)]
     [string] $Variant,
@@ -23,9 +20,9 @@ BeforeAll {
             [string[]] $Arguments
         )
 
-        & docker --context $DockerContext @Arguments
+        & docker @Arguments
         if ($LASTEXITCODE -ne 0) {
-            throw "Docker command failed with exit code ${LASTEXITCODE}: docker --context $DockerContext $($Arguments -join ' ')"
+            throw "Docker command failed with exit code ${LASTEXITCODE}: docker $($Arguments -join ' ')"
         }
     }
 
@@ -35,9 +32,9 @@ BeforeAll {
             [string[]] $Arguments
         )
 
-        $output = & docker --context $DockerContext @Arguments 2>&1
+        $output = & docker @Arguments 2>&1
         if ($LASTEXITCODE -ne 0) {
-            throw "Docker command failed with exit code ${LASTEXITCODE}: docker --context $DockerContext $($Arguments -join ' ')`n$($output | Out-String)"
+            throw "Docker command failed with exit code ${LASTEXITCODE}: docker $($Arguments -join ' ')`n$($output | Out-String)"
         }
         return ($output | Out-String).Trim()
     }
@@ -48,9 +45,9 @@ BeforeAll {
             [string] $Container
         )
 
-        $null = & docker --context $DockerContext container inspect $Container 2>$null
+        $null = & docker container inspect $Container 2>$null
         if ($LASTEXITCODE -eq 0) {
-            & docker --context $DockerContext container rm --force --volumes $Container | Out-Null
+            & docker container rm --force --volumes $Container | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 throw "Failed to remove test container $Container"
             }
@@ -63,8 +60,8 @@ BeforeAll {
             [string] $Container
         )
 
-        $applicationDirectory = $ExpectedOs -eq 'windows' ? 'C:/www/' : '/var/www/'
-        $composer = $ExpectedOs -eq 'windows' ? 'composer.exe' : 'composer'
+        $applicationDirectory = $Os -eq 'windows' ? 'C:/www/' : '/var/www/'
+        $composer = $Os -eq 'windows' ? 'composer.exe' : 'composer'
         $fixture = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../test-files/application'))
 
         Invoke-Docker @('cp', (Join-Path $fixture '.'), "${Container}:${applicationDirectory}")
@@ -82,7 +79,7 @@ BeforeAll {
             [switch] $Retry
         )
 
-        $nullDevice = $ExpectedOs -eq 'windows' ? 'NUL' : '/dev/null'
+        $nullDevice = $Os -eq 'windows' ? 'NUL' : '/dev/null'
         $arguments = @('exec', $Container, 'curl', '--silent')
         if ($Retry) {
             $arguments += @('--retry', '30', '--retry-connrefused', '--retry-delay', '1')
@@ -114,7 +111,7 @@ BeforeAll {
             [string] $Path
         )
 
-        $nullDevice = $ExpectedOs -eq 'windows' ? 'NUL' : '/dev/null'
+        $nullDevice = $Os -eq 'windows' ? 'NUL' : '/dev/null'
         $contentType = Invoke-DockerOutput @(
             'exec', $Container, 'curl', '--fail', '--silent', '--show-error',
             '--output', $nullDevice, '--write-out', '%{content_type}', "http://localhost$Path"
@@ -123,7 +120,7 @@ BeforeAll {
     }
 }
 
-Describe "Farah runtime [$ExpectedOs, PHP $Variant]" {
+Describe "Farah runtime [$Os, PHP $Variant]" {
     It "provides PHP $Variant" {
         $version = Invoke-DockerOutput @(
             'run', '--rm', $Image,
@@ -134,11 +131,6 @@ Describe "Farah runtime [$ExpectedOs, PHP $Variant]" {
     }
 
     It 'satisfies the platform runtime contract' {
-        if ($ExpectedOs -eq 'linux') {
-            Invoke-Docker @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=trixie', '/etc/os-release')
-            return
-        }
-
         $powerShellMajor = Invoke-DockerOutput @(
             'run', '--rm', $Image,
             'pwsh', '-NoLogo', '-NoProfile', '-Command', '(Get-Host).Version.Major'
@@ -155,7 +147,7 @@ Describe "Farah runtime [$ExpectedOs, PHP $Variant]" {
     }
 }
 
-Describe "Farah HTTP behavior [$ExpectedOs, PHP $Variant]" {
+Describe "Farah HTTP behavior [$Os, PHP $Variant]" {
     Context 'with FARAH_PAGE_TYPE=<PageType>' -ForEach @(
         @{ PageType = 'xml'; ExpectedMediaType = 'application/xhtml+xml' }
         @{ PageType = 'html'; ExpectedMediaType = 'text/html' }
@@ -173,7 +165,7 @@ Describe "Farah HTTP behavior [$ExpectedOs, PHP $Variant]" {
             try {
                 Get-ResponseStatus -Container $container -Path '/' -Retry | Out-Null
             } catch {
-                & docker --context $DockerContext logs $container
+                & docker logs $container
                 throw "$Image did not start serving HTTP"
             }
         }
