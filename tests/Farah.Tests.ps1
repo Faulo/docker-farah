@@ -131,11 +131,11 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
     }
 
     It 'satisfies the platform runtime contract' {
-        if ($ExpectedOs -eq 'linux') {
+        if ($Os -eq 'linux') {
             Invoke-Docker @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=trixie', '/etc/os-release')
         }
 		
-        if ($ExpectedOs -eq 'windows') {
+        if ($Os -eq 'windows') {
 			$powerShellMajor = Invoke-DockerOutput @(
 				'run', '--rm', $Image,
 				'pwsh', '-NoLogo', '-NoProfile', '-Command', '(Get-Host).Version.Major'
