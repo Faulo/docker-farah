@@ -148,7 +148,7 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 					'run', '--rm', $Image,
 					'choco', 'list', '--local-only', '--exact', $package, '--limit-output'
 				)
-				$installed.ToLowerInvariant() | Should -Match "^$([Regex]::Escape($package.ToLowerInvariant()))\\|"
+				$installed.ToLowerInvariant() | Should -Match "^$([Regex]::Escape($package.ToLowerInvariant()))\|"
 			}
 		}
     }
