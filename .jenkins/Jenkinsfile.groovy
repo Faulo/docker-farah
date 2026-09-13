@@ -26,7 +26,7 @@ pipeline {
                     def properties = readTrusted('.jenkins/pesterProject.properties')
                     def pesterConfig = readProperties text: properties
 
-					pesterProject(pesterConfig, params.DOCKER_NAMESPACE ?: 'faulo')
+					pesterProject(pesterConfig, params.DOCKER_NAMESPACE ?: 'faulo', env.PESTER_MAJOR_VERSION)
                 }
             }
         }
