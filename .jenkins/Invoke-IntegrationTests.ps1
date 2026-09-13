@@ -15,15 +15,44 @@ param(
     [string] $ResultsPath = '.reports/report.xml'
 )
 
+function ConvertFrom-DockerArgumentString {
+    param(
+        [string] $Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    $parseErrors = $null
+    $tokens = [Management.Automation.PSParser]::Tokenize("docker $Value", [ref] $parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        throw "Invalid Docker arguments '$Value': $($parseErrors.Message -join '; ')"
+    }
+
+    $tokens |
+        Select-Object -Skip 1 |
+        ForEach-Object { $_.Content }
+}
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+
+. (Join-Path $PSScriptRoot 'Docker.ps1')
 
 $environmentPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../.env'))
 $environment = @{}
 foreach ($line in Get-Content -LiteralPath $environmentPath) {
     if ($line -match '^\s*(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<value>.*)\s*$') {
-        $environment[$Matches.name] = $Matches.value
+        $value = $Matches.value.Trim()
+        if ($value.Length -ge 2 -and (
+            ($value.StartsWith('"') -and $value.EndsWith('"')) -or
+            ($value.StartsWith("'") -and $value.EndsWith("'"))
+        )) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+        $environment[$Matches.name] = $value
     }
 }
 
@@ -58,16 +87,14 @@ New-Item -ItemType Directory -Path $resultsDirectory -Force | Out-Null
 $Image = $Namespace + "/" + $Name + ":" + $Variant
 
 if ($Pull) {
-    & docker --context $Context pull $Image
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to pull image $Image from Docker context $Context"
-    }
+    Invoke-Docker -Context $Context -Arguments @('pull', $Image)
 }
 
-$os = & docker --context $Context version --format '{{.Server.Os}}'
-if ($LASTEXITCODE -ne 0) {
-    throw "Failed to query Docker context $Context"
-}
+$os = Invoke-DockerOutput -Context $Context -Arguments @('version', '--format', '{{.Server.Os}}')
+$dockerArgumentsVariable = "DOCKER_ARGS_$($os.ToUpperInvariant())"
+$dockerRunArguments = @(
+    ConvertFrom-DockerArgumentString -Value $environment[$dockerArgumentsVariable]
+)
 
 $testData = @{
     Context = $Context
@@ -76,6 +103,7 @@ $testData = @{
     Variant = $Variant
     Image = $Image
     Os = $os
+    DockerRunArguments = $dockerRunArguments
 }
 
 $testsPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' $TestsPath))

@@ -87,9 +87,11 @@ pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Pull -Context dende
 ```
 
 The integration runner reads `DOCKER_NAMESPACE` and `DOCKER_IMAGE` defaults
-from `.env`. The published `latest` tag is the same PHP 8.5 variant as the
-published `8.5` tag. Jenkins tests every configured published variant; local
-release-candidate testing intentionally covers only `tmp/farah:latest`.
+from `.env`. It also adds `DOCKER_ARGS_LINUX` or `DOCKER_ARGS_WINDOWS` to every
+`docker run` call according to the target daemon's operating system. The
+published `latest` tag is the same PHP 8.5 variant as the published `8.5` tag.
+Jenkins tests every configured published variant; local release-candidate
+testing intentionally covers only `tmp/farah:latest`.
 
 Rider exposes four shared run configurations under **Integration Tests** for
 running the Garl or Dende suite against either the local `tmp` image or the

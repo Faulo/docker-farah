@@ -15,21 +15,22 @@ param(
     [string] $Image,
 
     [Parameter(Mandatory)]
-    [string] $Os
+    [string] $Os,
+
+    [Parameter(Mandatory)]
+    [string[]] $DockerRunArguments
 )
+
+BeforeAll {
+    . (Join-Path $PSScriptRoot '../.jenkins/Docker.ps1')
+}
 
 Describe "Docker integration environment [$Context, $Image]" {
     It "reaches docker daemon $Context" {
-        $output = & docker --context $Context info 2>&1
-        $dockerExitCode = $LASTEXITCODE
-
-        $dockerExitCode | Should -Be 0 -Because "Docker context '$Context' must be reachable: $($output | Out-String)"
+        Invoke-Docker -Context $Context -Arguments @('info')
     }
 
     It "has image $Image" {
-        $output = & docker --context $Context image inspect $Image 2>&1
-        $dockerExitCode = $LASTEXITCODE
-
-        $dockerExitCode | Should -Be 0 -Because "image '$Image' must exist on Docker context '$Context': $($output | Out-String)"
+        Invoke-Docker -Context $Context -Arguments @('image', 'inspect', $Image)
     }
 }

@@ -15,34 +15,14 @@ param(
     [string] $Image,
 
     [Parameter(Mandatory)]
-    [string] $Os
+    [string] $Os,
+
+    [Parameter(Mandatory)]
+    [string[]] $DockerRunArguments
 )
 
 BeforeAll {
-    function Invoke-Docker {
-        param(
-            [Parameter(Mandatory)]
-            [string[]] $Arguments
-        )
-
-        & docker --context $Context @Arguments | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Docker command failed with exit code ${LASTEXITCODE}: docker $($Arguments -join ' ')"
-        }
-    }
-
-    function Invoke-DockerOutput {
-        param(
-            [Parameter(Mandatory)]
-            [string[]] $Arguments
-        )
-
-        $output = & docker --context $Context @Arguments 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            throw "Docker command failed with exit code ${LASTEXITCODE}: docker $($Arguments -join ' ')`n$($output | Out-String)"
-        }
-        return ($output | Out-String).Trim()
-    }
+    . (Join-Path $PSScriptRoot '../.jenkins/Docker.ps1')
 
     function Remove-TestContainer {
         param(
@@ -50,12 +30,9 @@ BeforeAll {
             [string] $Container
         )
 
-        & docker --context $Context container inspect $Container | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            & docker --context $Context container rm --force --volumes $Container | Out-Null
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to remove test container $Container"
-            }
+        $result = Get-DockerCommandResult -Context $Context -Arguments @('container', 'inspect', $Container)
+        if ($result.ExitCode -eq 0) {
+            Invoke-Docker -Context $Context -Arguments @('container', 'rm', '--force', '--volumes', $Container)
         }
     }
 
@@ -69,8 +46,8 @@ BeforeAll {
         $composer = $Os -eq 'windows' ? 'composer.exe' : 'composer'
         $fixture = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../test-files/application'))
 
-        Invoke-Docker @('cp', (Join-Path $fixture '.'), "${Container}:${applicationDirectory}")
-        Invoke-Docker @('exec', $Container, $composer, 'dump-autoload', '--no-interaction', '--optimize')
+        Invoke-Docker -Context $Context -Arguments @('cp', (Join-Path $fixture '.'), "${Container}:${applicationDirectory}")
+        Invoke-Docker -Context $Context -Arguments @('exec', $Container, $composer, 'dump-autoload', '--no-interaction', '--optimize')
     }
 
     function Get-ResponseStatus {
@@ -92,7 +69,7 @@ BeforeAll {
             $arguments += '--show-error'
         }
         $arguments += @('--output', $nullDevice, '--write-out', '%{http_code}', "http://localhost$Path")
-        return Invoke-DockerOutput $arguments
+        return Invoke-DockerOutput -Context $Context -Arguments $arguments
     }
 
     function Get-ResponseBody {
@@ -104,7 +81,7 @@ BeforeAll {
             [string] $Path
         )
 
-        return Invoke-DockerOutput @('exec', $Container, 'curl', '--fail', '--silent', '--show-error', "http://localhost$Path")
+        return Invoke-DockerOutput -Context $Context -Arguments @('exec', $Container, 'curl', '--fail', '--silent', '--show-error', "http://localhost$Path")
     }
 
     function Get-ResponseMediaType {
@@ -117,7 +94,7 @@ BeforeAll {
         )
 
         $nullDevice = $Os -eq 'windows' ? 'NUL' : '/dev/null'
-        $contentType = Invoke-DockerOutput @(
+        $contentType = Invoke-DockerOutput -Context $Context -Arguments @(
             'exec', $Container, 'curl', '--fail', '--silent', '--show-error',
             '--output', $nullDevice, '--write-out', '%{content_type}', "http://localhost$Path"
         )
@@ -129,7 +106,7 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
     It "provides PHP $Variant" {
         $expectedVariant = $Variant -eq 'latest' ? '8.5' : $Variant
         
-        $version = Invoke-DockerOutput @(
+        $version = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
             'run', '--rm', $Image,
             'php', '-r', "echo PHP_MAJOR_VERSION, '.', PHP_MINOR_VERSION;"
         )
@@ -139,18 +116,18 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 
     It 'satisfies the platform runtime contract' {
         if ($Os -eq 'linux') {
-            Invoke-Docker @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=trixie', '/etc/os-release')
+            Invoke-Docker -Context $Context -RunArguments $DockerRunArguments -Arguments @('run', '--rm', $Image, 'grep', '--fixed-strings', 'VERSION_CODENAME=trixie', '/etc/os-release')
         }
 		
         if ($Os -eq 'windows') {
-			$powerShellMajor = Invoke-DockerOutput @(
+			$powerShellMajor = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
 				'run', '--rm', $Image,
 				'pwsh', '-NoLogo', '-NoProfile', '-Command', '(Get-Host).Version.Major'
 			)
 			$powerShellMajor | Should -Be '7'
 
 			foreach ($package in @('powershell-core', 'firefox', 'vcredist140')) {
-				$installed = Invoke-DockerOutput @(
+				$installed = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
 					'run', '--rm', $Image,
 					'choco', 'list', '--local-only', '--exact', $package, '--limit-output'
 				)
@@ -167,7 +144,7 @@ Describe "Farah HTTP behavior [$Os, PHP $Variant]" {
     ) {
         BeforeAll {
             $container = $null
-            $container = Invoke-DockerOutput @(
+            $container = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
                 'run', '--detach',
                 '--env', 'COMPOSER_UPDATE=skip',
                 '--env', "FARAH_PAGE_TYPE=$PageType",
@@ -178,7 +155,8 @@ Describe "Farah HTTP behavior [$Os, PHP $Variant]" {
             try {
                 Get-ResponseStatus -Container $container -Path '/' -Retry | Out-Null
             } catch {
-                & docker --context $Context logs $container
+                $logs = Get-DockerCommandResult -Context $Context -Arguments @('logs', $container)
+                Write-Host ($logs.Output | Out-String)
                 throw "$Image did not start serving HTTP"
             }
         }
