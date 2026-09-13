@@ -39,7 +39,7 @@ def requiredProperty(config, name) {
 
 def commaSeparated(value) {
     return value
-        ? value.split(',').collect { it.trim() }.findAll { it }
+        ? value.split(' ').collect { it.trim() }.findAll { it }
         : []
 }
 
