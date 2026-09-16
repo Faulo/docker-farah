@@ -104,6 +104,58 @@ BeforeAll {
 }
 
 Describe "Farah runtime [$Os, PHP $Variant]" {
+    BeforeAll {
+        $configJson = Invoke-DockerOutput -Context $Context -Arguments @(
+            'image', 'inspect', '--format', '{{json .Config}}', $Image
+        )
+        $config = $configJson | ConvertFrom-Json
+        $entrypointProperty = $config.PSObject.Properties['Entrypoint']
+        $healthcheckProperty = $config.PSObject.Properties['Healthcheck']
+        $entrypoint = @(if ($entrypointProperty) { $entrypointProperty.Value })
+        $healthcheck = @(if ($healthcheckProperty) { $healthcheckProperty.Value.Test })
+    }
+
+    It 'does not declare an entrypoint' {
+        $entrypoint.Count | Should -Be 0
+    }
+
+    It 'declares the complete server command' {
+        @($config.Cmd) | Should -Be @('farah', 'serve')
+    }
+
+    It 'declares the launcher health probe' {
+        $healthcheck | Should -Be @('CMD', 'farah', 'health')
+    }
+
+    It 'lets a Jenkins keeper command replace Farah startup' {
+        $keeper = $Os -eq 'windows' ? 'cmd.exe' : 'cat'
+        $shell = $Os -eq 'windows' ? 'cmd.exe' : 'sh'
+        if ($Os -eq 'windows') {
+            $shellArguments = @('/S', '/C', 'echo keeper-ok')
+        } else {
+            $shellArguments = @('-c', 'printf keeper-ok')
+        }
+        $container = $null
+
+        try {
+            $container = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
+                'run', '--detach', '--tty', $Image, $keeper
+            )
+            $running = Invoke-DockerOutput -Context $Context -Arguments @(
+                'container', 'inspect', '--format', '{{.State.Running}}', $container
+            )
+            $execArguments = @('exec', $container, $shell) + $shellArguments
+            $output = Invoke-DockerOutput -Context $Context -Arguments $execArguments
+
+            $running | Should -Be 'true'
+            $output | Should -Be 'keeper-ok'
+        } finally {
+            if ($container) {
+                Remove-TestContainer $container
+            }
+        }
+    }
+
     It "provides PHP $Variant" {
         $expectedVariant = $Variant -eq 'latest' ? '8.5' : $Variant
         
@@ -181,6 +233,10 @@ Describe "Farah HTTP behavior [$Os, PHP $Variant]" {
 
             $phpInfo | Should -Match '<title>PHP'
             $phpInfo | Should -Match 'phpinfo\(\)'
+        }
+
+        It 'passes the launcher health probe' {
+            Invoke-Docker -Context $Context -Arguments @('exec', $container, 'farah', 'health')
         }
 
         It 'reports the expected application statuses' {

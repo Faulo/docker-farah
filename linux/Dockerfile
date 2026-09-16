@@ -65,8 +65,10 @@ COPY linux/imagemagick-policy.xml /etc/ImageMagick-7/policy.xml
 COPY --from=build --chmod=755 /solution/common/Farah/bin/Release/net9.0/linux-*/publish/farah /farah/farah
 COPY --chmod=777 linux/farah/index.php /farah/index.php
 RUN git config --global --add safe.directory '*'
-ENV FARAH_AUTOLOAD_FILE="/var/www/vendor/autoload.php"
-CMD ["/farah/farah"]
+ENV FARAH_AUTOLOAD_FILE="/var/www/vendor/autoload.php" \
+    PATH="/farah:${PATH}"
+HEALTHCHECK CMD ["farah", "health"]
+CMD ["farah", "serve"]
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

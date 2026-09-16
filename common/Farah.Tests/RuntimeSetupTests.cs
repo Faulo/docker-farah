@@ -10,6 +10,14 @@ namespace Farah.Tests;
 public sealed class RuntimeSetupTests {
     static readonly string[] apacheExecutables = ["apache2-foreground"];
     static readonly string[] composerAndApacheExecutables = ["composer", "apache2-foreground"];
+    static readonly string[] healthArguments = [
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "10",
+        "http://localhost/slothsoft@farah/phpinfo"
+    ];
     static readonly string[] serverArguments = ["-DSERVER_NAME=example.test"];
     static readonly string[] stableComposerArguments = ["update", "--no-interaction", "--prefer-stable"];
 
@@ -74,6 +82,21 @@ public sealed class RuntimeSetupTests {
 
         Assert.That(runner.calls.Select(call => call.executable), Is.EqualTo(apacheExecutables));
         Assert.That(output.ToString(), Does.Contain("Skipping composer update step."));
+    }
+
+    [Test]
+    public void ChecksServerHealthWithoutComposer() {
+        var runner = new FakeProcessRunner(7);
+        var setup = CreateSetup(runner, out _, out _);
+
+        int exitCode = setup.CheckHealth();
+
+        Assert.That(exitCode, Is.EqualTo(7));
+        Assert.That(runner.calls, Has.Count.EqualTo(1));
+        Assert.That(runner.calls[0].executable, Is.EqualTo("curl"));
+        Assert.That(runner.calls[0].arguments, Is.EqualTo(healthArguments));
+        Assert.That(runner.calls[0].workingDirectory, Is.EqualTo("/var/www"));
+        Assert.That(runner.calls[0].forwardTerminationSignals, Is.False);
     }
 
     static RuntimeSetup CreateSetup(FakeProcessRunner runner, out StringWriter output, out StringWriter error) {

@@ -5,6 +5,15 @@ using System.IO;
 namespace DockerFarah;
 
 sealed class RuntimeSetup {
+    static readonly string[] healthArguments = [
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "10",
+        "http://localhost/slothsoft@farah/phpinfo"
+    ];
+
     readonly TextWriter error;
     readonly TextWriter output;
     readonly PlatformInfo platform;
@@ -32,6 +41,10 @@ sealed class RuntimeSetup {
             platform.CreateServerArguments(serverName),
             platform.composerWorkingDirectory,
             platform.forwardTerminationSignals);
+    }
+
+    public int CheckHealth() {
+        return processRunner.Run("curl", healthArguments, platform.composerWorkingDirectory, false);
     }
 
     void RunComposer(IEnumerable<string> arguments) {

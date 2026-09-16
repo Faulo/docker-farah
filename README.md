@@ -28,7 +28,8 @@ matching `linux/farah-<PHP_VERSION>.packages` manifest.
 ## Runtime startup
 
 Both variants use the shared .NET 9 launcher: `/farah/farah` on Linux and
-`C:/farah/farah.exe` on Windows. Before handing off to Apache, the launcher
+`C:/farah/farah.exe` on Windows. It is available as `farah` on `PATH`.
+`farah serve` performs the normal startup. Before handing off to Apache, it
 reads the case-sensitive `COMPOSER_UPDATE` environment variable. It defaults
 to `install` and supports these modes:
 
@@ -50,8 +51,14 @@ to `html` for `text/html`. Asset URLs do not inherit this setting. The consuming
 application must register its sitemap, typically from its Composer bootstrap via
 `Kernel::setCurrentSitemap()`; the image does not provide one.
 
-The launcher is the image's default `CMD`, so supplying a command to
-`docker run` overrides startup normally.
+The image deliberately has no `ENTRYPOINT`. Its complete default command is
+`["farah", "serve"]`, so supplying a command to `docker run` replaces Farah
+startup completely. This guarantees compatibility with an unmodified Jenkins
+Docker Pipeline `inside {}` block, whose `cat` or `cmd.exe` keeper command must
+run directly. Use `farah serve` when explicitly overriding the image command.
+
+The image healthcheck runs `farah health`, which probes the bundled Farah PHP
+information endpoint without running Composer or changing server state.
 
 ## Local build and test
 

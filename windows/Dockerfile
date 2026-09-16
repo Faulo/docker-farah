@@ -166,6 +166,9 @@ RUN New-Item -ItemType Directory -Path C:/www/html -Force | Out-Null; \
 # Farah
 COPY --from=build C:/solution/common/Farah/bin/Release/net9.0/win-x64/publish/ C:/farah/
 COPY windows/farah/index.php C:/farah/index.php
-RUN git config --global --add safe.directory *
+RUN git config --global --add safe.directory *; \
+    C:/ProgramData/chocolatey/tools/shimgen.exe --output=C:/ProgramData/chocolatey/bin/farah.exe --path=C:/farah/farah.exe; \
+    if ($LASTEXITCODE -ne 0) { throw ('Creating farah.exe failed with exit code {0}' -f $LASTEXITCODE) }
 ENV FARAH_AUTOLOAD_FILE="C:/www/vendor/autoload.php"
-CMD ["C:/farah/farah.exe"]
+HEALTHCHECK CMD ["farah", "health"]
+CMD ["farah", "serve"]
