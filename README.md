@@ -65,7 +65,7 @@ information endpoint without running Composer or changing server state.
 The launcher unit tests require a .NET 9 SDK but do not require Docker:
 
 ```text
-dotnet test docker-farah.sln --configuration Release
+dotnet test docker-farah.sln --configuration Release --logger junit
 ```
 
 Release candidates use only the latest PHP variant and remain local to the
@@ -102,3 +102,9 @@ published production image. Production configurations pull the image before
 testing it.
 
 Only images in the disposable `tmp/` namespace should be used for local builds.
+
+Jenkins runs `dotnet test --logger junit` in the .NET 9 SDK container on a
+Linux agent and publishes `**/TestResults.xml` with its native `junit` step.
+Each test project writes its report to `TestResults/TestResults.xml`.
+Image integration tests continue to use the targets and variants configured
+in `.jenkins/pesterProject.properties`.
