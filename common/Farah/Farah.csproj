@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
+        <PublishSingleFile>true</PublishSingleFile>
+        <PublishSelfContained>true</PublishSelfContained>
+        <DebugType>none</DebugType>
         <AssemblyName>farah</AssemblyName>
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>enable</Nullable>

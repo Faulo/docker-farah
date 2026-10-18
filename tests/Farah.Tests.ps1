@@ -179,7 +179,7 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 			)
 			$powerShellMajor | Should -Be '7'
 
-			foreach ($package in @('powershell-core', 'firefox', 'vcredist140')) {
+            foreach ($package in @('powershell-core', 'firefox', 'vcredist140', 'composer')) {
 				$installed = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
 					'run', '--rm', $Image,
 					'choco', 'list', '--local-only', '--exact', $package, '--limit-output'
@@ -187,6 +187,32 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
 				$installed.ToLowerInvariant() | Should -Match "^$([Regex]::Escape($package.ToLowerInvariant()))\|"
 			}
 		}
+    }
+
+    It 'runs Firefox from a fresh process' {
+        $version = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
+            'run', '--rm', $Image, 'firefox', '--version'
+        )
+
+        $version | Should -Match 'Mozilla Firefox'
+    }
+
+    It 'runs the package-managed Composer command' {
+        $version = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
+            'run', '--rm', $Image, 'composer', '--version'
+        )
+        $version | Should -Match 'Composer(?: version)? 2\.'
+
+        if ($Os -eq 'linux') {
+            $verification = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
+                'run', '--rm', $Image, 'dpkg', '--verify', 'composer'
+            )
+            # Slim Debian images intentionally omit package documentation.
+            $runtimeChanges = @($verification -split '\r?\n' | Where-Object {
+                $_ -and $_ -notmatch '/usr/share/(doc|man)/'
+            })
+            $runtimeChanges | Should -BeNullOrEmpty
+        }
     }
 }
 

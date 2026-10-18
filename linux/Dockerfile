@@ -13,13 +13,7 @@ RUN case "$TARGETARCH" in \
         arm64) runtimeArchitecture=arm64 ;; \
         *) echo "Unsupported Linux architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac \
- && dotnet publish docker-farah.sln \
-        --configuration Release \
-        --runtime "linux-${runtimeArchitecture}" \
-        --self-contained true \
-        --property:PublishSingleFile=true \
-        --property:UseAppHost=true \
-        --property:DebugType=None
+ && dotnet publish --runtime "linux-${runtimeArchitecture}"
 
 FROM debian:trixie-slim
 
@@ -42,20 +36,30 @@ RUN dpkg -i /tmp/debsuryorg-archive-keyring.deb \
       > /etc/apt/sources.list.d/php.list \
  && rm -f /tmp/debsuryorg-archive-keyring.deb
 
-# Runtime tools
+# Use a distribution Composer stack compatible with each legacy PHP minor.
+RUN case "$PHP_VERSION" in \
+        7.4) composerSuite=bullseye; composerMirror=https://archive.debian.org ;; \
+        8.0) composerSuite=bookworm; composerMirror=https://deb.debian.org ;; \
+        *) exit 0 ;; \
+    esac \
+ && printf '%s\n' \
+        "deb ${composerMirror}/debian ${composerSuite} main" \
+        "deb ${composerMirror}/debian-security ${composerSuite}-security main" \
+        > /etc/apt/sources.list.d/composer.list \
+ && printf '%s\n' \
+        'Package: composer php-composer-* php-symfony-* php-psr-* php-react-promise php-json-schema jsonlint php-seld-*' \
+        "Pin: release n=${composerSuite}*" \
+        'Pin-Priority: 990' \
+        > /etc/apt/preferences.d/composer
+
+# Resolve common tools and the selected PHP version in one APT transaction.
 COPY linux/farah-common.packages /tmp/farah-common.packages
-
-RUN apt-get update \
- && xargs apt-get install -y --no-install-recommends < /tmp/farah-common.packages \
- && rm -f /tmp/farah-common.packages \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
 COPY linux/farah-${PHP_VERSION}.packages /tmp/farah.packages
 
 RUN apt-get update \
- && xargs apt-get install -y --no-install-recommends < /tmp/farah.packages \
- && rm -f /tmp/farah.packages \
+ && cat /tmp/farah.packages >> /tmp/farah-common.packages \
+ && xargs apt-get install -y --no-install-recommends < /tmp/farah-common.packages \
+ && rm -f /tmp/farah-common.packages /tmp/farah.packages \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -71,20 +75,7 @@ HEALTHCHECK CMD ["farah", "health"]
 CMD ["farah", "serve"]
 
 # Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER=1
-ARG COMPOSER_DEV_PUB_SHA256=2b2df89fb2581e669b4668b451097d4a03f4dc2d7a06df197554064494a90a31
-ARG COMPOSER_TAGS_PUB_SHA256=d8f3e350437bf3b5342dbf046064ebd1f017ebc720955433194360a01cfd074f
-RUN set -eux; \
-    composerHome="$(composer config --global home)"; \
-    curl --fail --location --retry 3 https://composer.github.io/snapshots.pub --output /tmp/keys.dev.pub; \
-    curl --fail --location --retry 3 https://composer.github.io/releases.pub --output /tmp/keys.tags.pub; \
-    echo "${COMPOSER_DEV_PUB_SHA256}  /tmp/keys.dev.pub" | sha256sum -c -; \
-    echo "${COMPOSER_TAGS_PUB_SHA256}  /tmp/keys.tags.pub" | sha256sum -c -; \
-    install -d -m 700 "$composerHome"; \
-    install -m 600 /tmp/keys.dev.pub "$composerHome/keys.dev.pub"; \
-    install -m 600 /tmp/keys.tags.pub "$composerHome/keys.tags.pub"; \
-    rm -f /tmp/keys.dev.pub /tmp/keys.tags.pub
 
 # Default application
 RUN composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader \

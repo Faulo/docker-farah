@@ -6,9 +6,7 @@
     <authors>Daniel Schulz</authors>
     <description>Files and Resources and Hypertext</description>
     <dependencies>
-      <dependency id="farah-common" version="[1.0.0]" />
       <dependency id="php" version="[8.5,8.6)" />
-      <dependency id="composer" />
     </dependencies>
   </metadata>
 </package>

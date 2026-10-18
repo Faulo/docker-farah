@@ -1,5 +1,6 @@
 apache2
 curl
+composer
 firefox-esr
 git
 imagemagick

@@ -4,7 +4,7 @@
     <version>1.0.0</version>
     <title>Slothsoft's Farah CMS common tools</title>
     <authors>Daniel Schulz</authors>
-    <description>PHP-independent tools used by Farah.</description>
+    <description>Shared tools used by Farah.</description>
     <dependencies>
       <dependency id="apache-httpd" />
       <dependency id="vcredist140" />
@@ -12,6 +12,7 @@
       <dependency id="7zip" />
       <dependency id="unzip" />
       <dependency id="curl" />
+      <dependency id="composer" />
       <dependency id="imagemagick" />
       <dependency id="firefox" />
       <dependency id="powershell-core" />
