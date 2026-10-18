@@ -1,157 +1,251 @@
-# Docker Image: Farah Server
+# Farah CMS server for Linux and Windows containers
 
-https://hub.docker.com/repository/docker/faulo/farah
+[![Docker](https://github.com/Faulo/docker-farah/actions/workflows/docker.yml/badge.svg?branch=main)](https://github.com/Faulo/docker-farah/actions/workflows/docker.yml) [![Docker image updated](https://img.shields.io/docker/last-updated/faulo/farah/latest)](https://hub.docker.com/r/faulo/farah/tags?name=latest) [![License: MIT](https://img.shields.io/github/license/Faulo/docker-farah)](LICENSE) [![Platforms: Linux amd64 and arm64, Windows amd64](https://img.shields.io/badge/platforms-Linux%20amd64%20%7C%20arm64%20%7C%20Windows%20amd64-0078D4)](#available-images)
 
-Linux and Windows images provide Apache, PHP, Composer, Git, ImageMagick,
-UnZip, 7-Zip, and Firefox. All Linux variants use Debian Trixie Slim and
-install the selected PHP minor and its extensions from DEB.SURY.ORG. Linux
-runtime packages use the newest versions offered by their configured APT
-repositories at build time. Composer is declared in `farah-common.packages`
-and installed through APT together with the selected PHP manifest.
-PHP 7.4 uses Bullseye's archived Composer dependency stack, PHP 8.0 uses
-Bookworm's stack, and PHP 8.1 and newer use Trixie's stack. These repository
-preferences apply only to Composer and its PHP libraries; the Linux base and
-native runtime packages remain Trixie, with PHP and its extensions from Sury.
-The Windows runtime derives from `faulo/choco:windowsservercore-ltsc2019`.
-One `choco-install` invocation installs the common and PHP-specific nuspecs
-together with dependency planning and per-package retries, selecting the newest
-compatible Chocolatey packages at build time. The base supplies Chocolatey, Visual C++
-runtimes, and shared shell and installer compatibility fixes. Firefox uses its
-normal Chocolatey installer and lives in `C:/Program Files/Mozilla Firefox`.
-Composer belongs to `farah-common.nuspec`; the PHP-specific nuspecs declare
-only their PHP dependency. Chocolatey installs Composer once. The Dockerfile
-adds an executable shim for the installed
-Composer command so it also works with direct `docker exec` and the launcher.
-The self-contained .NET 9 launcher does not require .NET Framework 4.8; the
-separate Nano Server SDK build stage remains unchanged.
+[`faulo/farah`](https://hub.docker.com/r/faulo/farah) runs Farah CMS applications
+with Apache, PHP, and Composer on Linux and Windows. Choose a PHP release,
+mount your application, and let the included launcher install its Composer
+dependencies before starting the web server.
 
-Report native installer stalls or regressions to
-[docker-choco](https://github.com/Faulo/docker-choco/issues), linking the report
-from the downstream migration. Include the package ID/version, base tag/digest,
-host Windows build and isolation, exact command/nuspec, relevant complete logs,
-exit code or timeout, and a fresh-container reproduction without credentials.
-Keep the affected migration blocked until the shared fix is validated; installer
-extraction, skipped package scripts, fabricated records, and downstream
-compatibility patches must not replace a failing normal installation.
-Build variants support PHP 7.4 and PHP 8.0 through 8.5.
-PHP 7.4 through 8.1 no longer receive upstream security updates.
-The image includes a minimal Farah CMS application so the server starts without
-an application mount; `/slothsoft@farah/phpinfo` exposes its PHP information page.
-The Linux Dockerfile supports `linux/amd64` and `linux/arm64`. It does not include
-Wine; applications running in the image must provide native Linux executables.
-Linux runtime packages are declared in `linux/farah-common.packages` and the
-matching `linux/farah-<PHP_VERSION>.packages` manifest.
+The image includes a minimal Farah application, a built-in HTTP health check,
+and tools for image processing, browser automation, and archive handling.
 
-## Published tags
+[Docker Hub](https://hub.docker.com/r/faulo/farah) ·
+[Image tags](https://hub.docker.com/r/faulo/farah/tags) ·
+[Report an issue](https://github.com/Faulo/docker-farah/issues)
 
-`docker.json` configures `Faulo/workflows-docker@v3` using schema version 3.
-The tracked `.env` supplies the publication namespace and image, independently
-of the Docker Hub login. Seven PHP releases produce 21 native builds across
-Linux amd64, Linux arm64, and Windows amd64 on Server Core LTSC 2019.
-Every release publishes these tags (shown for PHP 8.5):
+## Available images
 
-| Tag | Selected images |
+PHP variants are available for `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`,
+and `8.5`. The `latest` tag family currently aliases PHP `8.5`.
+
+| Tag, shown for PHP 8.5 | Platform |
 | --- | --- |
-| `8.5`, `latest` | All three platforms |
+| `8.5`, `latest` | Linux amd64, Linux arm64, and Windows amd64 |
 | `8.5-linux`, `latest-linux` | Linux amd64 and arm64 |
 | `8.5-linux-amd64`, `latest-linux-amd64` | Linux amd64 |
 | `8.5-linux-arm64`, `latest-linux-arm64` | Linux arm64 |
 | `8.5-windows`, `latest-windows` | Windows amd64, Server Core LTSC 2019 |
 | `8.5-windows-ltsc2019`, `latest-windows-ltsc2019` | Windows amd64, Server Core LTSC 2019 |
 
-The same versioned tag structure applies to PHP 7.4 and 8.0 through 8.4.
-For example, use `FROM faulo/farah:8.5-linux` or
-`FROM faulo/farah:8.5-windows-ltsc2019` in a dependent Dockerfile.
-Each prefix index includes its descendant images and associated attestations;
-`latest` aliases have the same index digests as their `8.5` counterparts.
-Windows indices retain OS-version metadata. The public `windows` series uses
-Server Core; it does not include full Windows images or LTSC 2022.
+The same versioned tag structure applies to every PHP variant. Use `latest`
+for automatic platform selection, a PHP tag to select a release line, or a
+platform-specific tag when your deployment needs one. Use an image digest
+when a deployment needs a fixed image revision.
 
-GitHub owns image builds, caching, publication, manifest verification, and
-run-specific staging-tag cleanup. Its Docker Hub token needs publication and
-staging-tag deletion permissions. Historical tags remain untouched. Project
-unit and integration tests run in Jenkins.
+Linux variants use Debian Trixie Slim. Windows variants use
+`faulo/choco:windowsservercore-ltsc2019` and require a compatible Windows
+container engine and isolation mode.
 
-## Runtime startup
+Legacy PHP variants remain available for compatibility. PHP 7.4 through 8.1
+no longer receive upstream security updates; consult
+[PHP's supported versions](https://www.php.net/supported-versions.php) when
+choosing a release.
 
-Both variants use the shared .NET 9 launcher: `/farah/farah` on Linux and
-`C:/farah/farah.exe` on Windows. It is available as `farah` on `PATH`.
-`farah serve` performs the normal startup. Before handing off to Apache, it
-reads the case-sensitive `COMPOSER_UPDATE` environment variable. It defaults
-to `install` and supports these modes:
+## Quick start
 
-- `skip`
-- `install`
-- `install-dev`
-- `lowest`
-- `lowest-dev`
-- `stable`
-- `stable-dev`
+Start the bundled application:
 
-Unknown modes and Composer failures produce warnings but do not prevent Apache
-from starting. Linux forwards `SERVER_NAME` to `apache2-foreground`. Windows
-keeps the container attached to Apache's error log after Composer finishes.
+```console
+docker run --detach --name farah --publish 8080:80 faulo/farah:latest
+```
 
-On PHP 8.2 and newer, `FARAH_PAGE_TYPE` selects how sitemap pages without an
-explicit stream are serialized. Set it to `xml` for `application/xhtml+xml` or
-to `html` for `text/html`. Asset URLs do not inherit this setting. The consuming
-application must register its sitemap, typically from its Composer bootstrap via
-`Kernel::setCurrentSitemap()`; the image does not provide one.
+Open [http://localhost:8080/slothsoft@farah/phpinfo](http://localhost:8080/slothsoft@farah/phpinfo)
+to view the PHP information page. The bundled application provides this
+endpoint without an application mount; a site homepage requires your own
+application and sitemap.
 
-The image deliberately has no `ENTRYPOINT`. Its complete default command is
-`["farah", "serve"]`, so supplying a command to `docker run` replaces Farah
-startup completely. This guarantees compatibility with an unmodified Jenkins
-Docker Pipeline `inside {}` block, whose `cat` or `cmd.exe` keeper command must
-run directly. Use `farah serve` when explicitly overriding the image command.
+Inspect startup output and run the health probe:
 
-The image healthcheck runs `farah health`, which probes the bundled Farah PHP
-information endpoint without running Composer or changing server state.
+```console
+docker logs --follow farah
+docker exec farah farah health
+```
 
-## Local build and test
+The container listens on HTTP port 80. Its default command is
+`farah serve`. Supplying another command replaces server startup completely:
 
-The launcher unit tests require a .NET 9 SDK but do not require Docker:
+```console
+docker run --rm faulo/farah:latest php --version
+docker run --rm faulo/farah:latest composer --version
+```
 
-```text
+## Run your application
+
+Your application directory should contain its `composer.json`, optional
+`composer.lock`, and public files under `html/`. Require `slothsoft/farah`
+and register your sitemap from your application's Composer bootstrap, typically
+with `Kernel::setCurrentSitemap()`. The image does not supply a site sitemap.
+
+For a Linux container engine, save this as `compose.yaml` and place your
+application in `./app`:
+
+```yaml
+services:
+  farah:
+    image: faulo/farah:latest-linux
+    ports:
+      - "8080:80"
+    environment:
+      SERVER_NAME: localhost
+      COMPOSER_UPDATE: install
+    volumes:
+      - type: bind
+        source: ./app
+        target: /var/www
+```
+
+For a Windows container engine, use this configuration instead:
+
+```yaml
+services:
+  farah:
+    image: faulo/farah:latest-windows
+    ports:
+      - "8080:80"
+    environment:
+      SERVER_NAME: localhost
+      COMPOSER_UPDATE: install
+    volumes:
+      - type: bind
+        source: ./app
+        target: c:/www
+```
+
+Start the server:
+
+```console
+docker compose up -d
+docker compose logs --follow farah
+```
+
+The application mount replaces the bundled application. Startup runs Composer
+in the application root, so the mount must allow dependency installation unless
+you supply an existing `vendor/` directory and set `COMPOSER_UPDATE=skip`.
+On Linux, Apache serves requests as `www-data`; give that user read access to
+application files and write access to any application-managed data directories.
+
+The [test application](test-files/application) demonstrates Composer bootstrap
+and sitemap registration.
+
+### Application paths
+
+| Purpose | Linux | Windows |
+| --- | --- | --- |
+| Application root and Composer working directory | `/var/www` | `C:/www` |
+| Public document root | `/var/www/html` | `C:/www/html` |
+| Default Composer autoloader | `/var/www/vendor/autoload.php` | `C:/www/vendor/autoload.php` |
+
+Apache routes requests without a matching public resource through the bundled
+Farah front controller. The `/slothsoft@farah/phpinfo` route also provides
+the endpoint used by the image's health check.
+
+## Configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SERVER_NAME` | `localhost` | Apache server name |
+| `COMPOSER_UPDATE` | `install` | Composer startup mode, listed below |
+| `FARAH_AUTOLOAD_FILE` | Platform-specific path above | Autoloader loaded by the Farah front controller |
+| `FARAH_PAGE_TYPE` | Unset | Default stream for sitemap pages without an explicit stream, on PHP 8.2 and newer |
+
+Set `FARAH_PAGE_TYPE=xml` for `application/xhtml+xml`, or
+`FARAH_PAGE_TYPE=html` for `text/html`. Asset URLs do not inherit this
+setting.
+
+### Composer startup modes
+
+`COMPOSER_UPDATE` is case-sensitive. Every Composer invocation uses
+`--no-interaction`.
+
+| Mode | Behavior |
+| --- | --- |
+| `skip` | Start Apache without running Composer |
+| `install` | Install locked dependencies without development packages |
+| `install-dev` | Install dependencies including development packages |
+| `lowest` | Update with `--prefer-lowest`, without development packages |
+| `lowest-dev` | Update with `--prefer-lowest`, including development packages |
+| `stable` | Update with `--prefer-stable`, without development packages |
+| `stable-dev` | Update with `--prefer-stable`, including development packages |
+
+Modes without development packages also use `--optimize-autoloader` and
+`--classmap-authoritative`. Unknown modes and Composer failures produce
+warnings and allow Apache to start; inspect startup logs when dependencies
+are missing. Use `skip` when dependencies are prepared during your own image
+build.
+
+### PHP and server defaults
+
+The bundled PHP configuration enables error display and logging, allows up to
+1 GiB per upload, and sets a 4 GiB memory limit. Review these settings and access
+to the PHP information endpoint for your deployment. Configuration sources are
+[`linux/php.ini`](linux/php.ini), [`windows/php.ini`](windows/php.ini),
+[`linux/apache.conf`](linux/apache.conf), and
+[`windows/apache.conf`](windows/apache.conf).
+
+## Included tools
+
+| Tools | Purpose |
+| --- | --- |
+| Apache and the selected PHP release | HTTP serving and PHP execution |
+| Farah CMS and Composer | Application runtime and dependency management |
+| Native `farah` launcher | Server startup and HTTP health probe |
+| Git and curl | Source retrieval and HTTP requests |
+| ImageMagick | Image processing |
+| Firefox | Browser automation; Firefox ESR on Linux |
+| UnZip and 7-Zip | Archive handling |
+| PowerShell on Windows | Windows automation |
+
+Linux PHP packages include curl, DS, GD, Imagick, IMAP, Intl, Mbstring, MySQL,
+XML, and Zip extensions. Exact package and extension declarations are maintained
+in [`linux/`](linux) and [`windows/`](windows), including a manifest for
+each PHP release. Linux applications must use native Linux executables; Wine
+is not included.
+
+## Development and tests
+
+The native launcher and its NUnit tests live in [`common/`](common).
+With the .NET 9 SDK installed, run the launcher tests without Docker:
+
+```console
 dotnet test docker-farah.sln --configuration Release --logger junit
 ```
 
-Release candidates use only the latest PHP variant and remain local to the
-Linux daemon on Garl and the Windows daemon on Popo. Both Dockerfiles use the
-repository root as their build context:
+The Pester integration tests in [`tests/`](tests) cover installed tools,
+PHP versions and extensions, Composer, Firefox, server startup, command
+overrides, HTTP responses, page media types, and the health probe.
 
-```text
-docker --context garl build --pull --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file linux/Dockerfile .
-docker --context popo build --pull --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file windows/Dockerfile .
-pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Namespace tmp -Context garl
-pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Namespace tmp -Context popo
+Both Dockerfiles use the repository root as their build context.
+`PHP_VERSION` defaults to `8.2` in local builds; pass it explicitly to
+match a published PHP variant. Build with a container engine matching the
+selected platform:
+
+```console
+docker build --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file linux/Dockerfile .
 ```
 
-Do not push or pull `tmp` images. To test the published `latest` image instead,
-pull it on each daemon before running the suite:
-
-```text
-pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Pull -Context garl
-pwsh ./.jenkins/Invoke-IntegrationTests.ps1 -Pull -Context popo
+```console
+docker build --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file windows/Dockerfile .
 ```
 
-The integration runner installs missing PowerShell modules declared in
-`.jenkins/RequiredModules.psd1`, then reads `DOCKER_NAMESPACE` and
-`DOCKER_IMAGE` defaults from `.env`. It also adds `DOCKER_ARGS_LINUX` or
-`DOCKER_ARGS_WINDOWS` to every `docker run` call according to the target
-daemon's operating system. The published `latest` tag is the same PHP 8.5
-variant as the published `8.5` tag. Jenkins tests every configured published
-variant; local release-candidate testing intentionally covers only
-`tmp/farah:latest`.
+Images are rebuilt on a monthly schedule and when changes are published.
+The shared [Docker publication workflow](https://github.com/Faulo/workflows-docker)
+reads [`docker.json`](docker.json) for PHP variants, native builds, public tags,
+and Docker Hub metadata.
 
-Rider exposes four shared run configurations under **Integration Tests** for
-running the Garl or Popo suite against either the local `tmp` image or the
-published production image. Production configurations pull the image before
-testing it.
+## Support and contributions
 
-Only images in the disposable `tmp/` namespace should be used for local builds.
+Report bugs and feature requests through
+[GitHub issues](https://github.com/Faulo/docker-farah/issues). Include the image
+tag or digest, PHP version, container OS and architecture, Docker version, and
+a minimal reproduction with credentials removed. For Windows issues, include
+the isolation mode where relevant.
 
-Jenkins runs `dotnet test --logger junit` in the .NET 9 SDK container on a
-Linux agent and publishes `**/TestResults.xml` with its native `junit` step.
-Each test project writes its report to `TestResults/TestResults.xml`.
-Image integration tests continue to use the targets and variants configured
-in `.jenkins/pesterProject.properties`.
+Contributions are welcome. Add tests for behavior changes, keep shared launcher
+code in `common/`, and maintain platform packaging in `linux/` or `windows/`.
+
+## License
+
+The repository's code and documentation are licensed under the
+[MIT License](LICENSE). Bundled applications, libraries, and tools retain their
+respective licenses.
