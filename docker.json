@@ -5,6 +5,7 @@
     "description": "Farah CMS with Apache, PHP, and Composer for Linux and Windows containers",
     "overviewFile": "README.md",
     "context": ".",
+    "cleanupWindowsRunner": true,
     "matrix": {
         "version": {
             "buildArgs": {
