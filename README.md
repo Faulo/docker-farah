@@ -230,8 +230,7 @@ docker build --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file windows/D
 
 Images are rebuilt on a monthly schedule and when changes are published.
 The shared [Docker publication workflow](https://github.com/Faulo/workflows-docker)
-uses version `v3.3.1` for raw manifest verification and isolated registry credentials.
-It reads [`docker.json`](docker.json) for PHP variants, native builds, public tags,
+reads [`docker.json`](docker.json) for PHP variants, native builds, public tags,
 and Docker Hub metadata.
 
 ## Support and contributions
