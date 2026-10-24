@@ -42,6 +42,35 @@ no longer receive upstream security updates; consult
 [PHP's supported versions](https://www.php.net/supported-versions.php) when
 choosing a release.
 
+### PHP2Shell security status
+
+Verified on **2026-10-24** against the images published by
+[this build](https://github.com/Faulo/docker-farah/actions/runs/40089886123).
+This matrix covers **CVE-2026-109618** and **CVE-2026-109619**, collectively
+known as PHP2Shell; see the [PHP security advisory](https://www.php.net/archive/2026.php#2026-10-21-5).
+`Included` and `Backport` mean both fixes are present; `Missing` means they
+are absent.
+
+| PHP branch | Linux amd64 | Linux arm64 | Windows amd64 (LTSC 2019) |
+| --- | --- | --- | --- |
+| 7.4 | Backport (`7.4.33-31`) | Backport (`7.4.33-31`) | Missing (`7.4.33`) |
+| 8.0 | Backport (`8.0.30-25`) | Backport (`8.0.30-25`) | Missing (`8.0.30`) |
+| 8.1 | Backport (`8.1.34-9`) | Missing (`8.1.34-8`) | Missing (`8.1.34`) |
+| 8.2 | Included (`8.2.35`) | Missing (`8.2.34`) | Included (`8.2.35`) |
+| 8.3 | Included (`8.3.36`) | Missing (`8.3.35`) | Included (`8.3.36`) |
+| 8.4 | Included (`8.4.27`) | Included (`8.4.27`) | Included (`8.4.27`) |
+| 8.5 | Included (`8.5.12`) | Missing (`8.5.11`) | Included (`8.5.12`) |
+
+Legacy Linux versions above include the Debian package revision; package
+epochs and distribution build suffixes are omitted. Sury supplies the
+backports, so `php --version` alone cannot identify whether a legacy image
+contains these fixes. Linux status was checked against both CLI and Apache
+module packages; Windows status was checked against the installed PHP build.
+
+The [upstream legacy backports](https://www.php.net/archive/2026.php#2026-10-21-5)
+disable session upload progress and terminate the PHP worker on memory
+exhaustion. PHP 7.4 through 8.1 remain end-of-life versions.
+
 ## Quick start
 
 Start the bundled application:
