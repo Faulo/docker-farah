@@ -116,9 +116,6 @@ def pesterProject(config) {
                         def image = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE}:${variant}"
                         def safeImage = image.replaceAll('[^A-Za-z0-9_.-]+', '-')
                         def resultsPath = ".reports/${safeImage}-${os}.xml"
-                        def testsPath = variant in ['7.4', '8.0', '8.1']
-                            ? 'tests/FirefoxWebDriver.Tests.ps1'
-                            : 'tests'
 
                         withOptionalCredentials(bindings) {
                             stage(image) {
@@ -131,7 +128,7 @@ def pesterProject(config) {
                                     timeout(time: timeoutMinutes, unit: 'MINUTES') {
                                         echo "Testing ${image} on ${target}"
                                         try {
-                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Variant ${variant} -Pull -TestsPath ${testsPath} -ResultsPath ${resultsPath}"
+                                            exec "pwsh -NoLogo -NoProfile -NonInteractive -File .jenkins/Invoke-IntegrationTests.ps1 -Variant ${variant} -Pull -TestsPath tests -ResultsPath ${resultsPath}"
                                         } finally {
                                             junit(
                                                 testResults: resultsPath,
