@@ -21,6 +21,7 @@ ARG PHP_VERSION
 ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
 ENV PHP_VERSION=${PHP_VERSION}
+ENV MOZ_DISABLE_CONTENT_SANDBOX=1
 WORKDIR /var/www
 
 # Package sources
@@ -68,6 +69,8 @@ COPY linux/imagemagick-policy.xml /etc/ImageMagick-7/policy.xml
 # Farah
 COPY --from=build --chmod=755 /solution/common/Farah/bin/Release/net9.0/linux-*/publish/farah /farah/farah
 COPY --chmod=777 linux/farah/index.php /farah/index.php
+# The bundled front controller uses /farah as its working directory.
+RUN install -d -o www-data -g www-data /farah/.cache /farah/.data
 RUN git config --global --add safe.directory '*'
 ENV FARAH_AUTOLOAD_FILE="/var/www/vendor/autoload.php" \
     PATH="/farah:${PATH}"

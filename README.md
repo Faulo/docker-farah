@@ -177,6 +177,7 @@ the endpoint used by the image's health check.
 | `COMPOSER_UPDATE` | `install` | Composer startup mode, listed below |
 | `FARAH_AUTOLOAD_FILE` | Platform-specific path above | Autoloader loaded by the Farah front controller |
 | `FARAH_PAGE_TYPE` | Unset | Default stream for sitemap pages without an explicit stream, on PHP 8.2 and newer |
+| `MOZ_DISABLE_CONTENT_SANDBOX` | `1` | Disable Firefox's content-process sandbox for browser automation |
 
 Set `FARAH_PAGE_TYPE=xml` for `application/xhtml+xml`, or
 `FARAH_PAGE_TYPE=html` for `text/html`. Asset URLs do not inherit this
@@ -231,6 +232,23 @@ in [`linux/`](linux) and [`windows/`](windows), including a manifest for
 each PHP release. Linux applications must use native Linux executables; Wine
 is not included.
 
+### Firefox automation
+
+Firefox runs headlessly in both image variants. Supply a compatible
+`geckodriver` when using WebDriver; the image does not bundle one. The
+integration tests provision the driver separately and verify that a fresh
+container can open its first browser session, navigate to the bundled PHP
+information page, and execute JavaScript.
+
+`MOZ_DISABLE_CONTENT_SANDBOX=1` is an image default for every PHP variant.
+It disables Firefox's content-process sandbox for Firefox processes that
+inherit the environment. Docker container isolation remains in effect, but
+a browser content-process exploit could access resources available to the
+browser account, including mounted files and credentials. Windows containers
+run as `ContainerAdministrator` by default. Use this browser runtime for
+trusted application and fixture testing; Hyper-V isolation provides a
+stronger host boundary on Windows.
+
 ## Development and tests
 
 The native launcher and its NUnit tests live in [`common/`](common).
@@ -241,8 +259,9 @@ dotnet test docker-farah.sln --configuration Release --logger junit
 ```
 
 The Pester integration tests in [`tests/`](tests) cover installed tools,
-PHP versions and extensions, Composer, Firefox, server startup, command
-overrides, HTTP responses, page media types, and the health probe.
+PHP versions and extensions, Composer, Firefox's first WebDriver session,
+server startup, command overrides, HTTP responses, page media types, and
+the health probe.
 
 Both Dockerfiles use the repository root as their build context.
 `PHP_VERSION` defaults to `8.2` in local builds; pass it explicitly to
@@ -250,11 +269,11 @@ match a published PHP variant. Build with a container engine matching the
 selected platform:
 
 ```console
-docker build --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file linux/Dockerfile .
+docker --context linux build --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file linux/Dockerfile .
 ```
 
 ```console
-docker build --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file windows/Dockerfile .
+docker --context windows build --build-arg PHP_VERSION=8.5 --tag tmp/farah:latest --file windows/Dockerfile .
 ```
 
 Images are rebuilt on a monthly schedule and when changes are published.
