@@ -246,7 +246,7 @@ Describe "Farah HTTP behavior [$Os, PHP $Variant]" {
             }
         }
 
-        It 'serves <Path> with the configured media type' -Skip:($Variant -in @('7.4', '8.0', '8.1')) -ForEach @(
+        It 'serves <Path> with the configured media type' -Skip:($PageType -eq 'html' -and $Variant -in @('7.4', '8.0', '8.1')) -ForEach @(
             @{ Path = '/phpinfo/' }
             @{ Path = '/consumer-sitemap/' }
         ) {
