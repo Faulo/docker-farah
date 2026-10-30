@@ -40,30 +40,15 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 $requiredModulesPath = Join-Path $PSScriptRoot 'RequiredModules.psd1'
-$hasPester = @(Get-Module -ListAvailable Pester | Where-Object { $_.Version -ge [version] '6.0' }).Count -gt 0
-$hasDotenv = @(Get-Module -ListAvailable pwsh-dotenv).Count -gt 0
-if (-not ($hasPester -and $hasDotenv)) {
-    for ($attempt = 1; $attempt -le 4; $attempt++) {
-        try {
-            Install-PSResource `
-                -RequiredResourceFile $requiredModulesPath `
-                -Scope CurrentUser `
-                -TrustRepository `
-                -AcceptLicense `
-                -Quiet `
-                -WarningAction SilentlyContinue
-            break
-        } catch {
-            if ($attempt -eq 4) {
-                throw
-            }
-            Write-Warning "Module installation failed on attempt $attempt; retrying: $($_.Exception.Message)"
-            Start-Sleep -Seconds (5 * $attempt)
-        }
-    }
-}
+Install-PSResource `
+    -RequiredResourceFile $requiredModulesPath `
+    -Scope CurrentUser `
+    -TrustRepository `
+    -AcceptLicense `
+    -Quiet `
+    -WarningAction SilentlyContinue
 
-Import-Module Pester -MinimumVersion 6.0 -ErrorAction Stop
+Import-Module Pester -ErrorAction Stop
 Import-Module pwsh-dotenv -ErrorAction Stop
 . (Join-Path $PSScriptRoot 'Docker.ps1')
 
