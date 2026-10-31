@@ -197,22 +197,52 @@ Describe "Farah runtime [$Os, PHP $Variant]" {
         $version | Should -Match 'Mozilla Firefox'
     }
 
-    It 'runs the package-managed Composer command' {
+    It 'executes a Composer project command with exact stdout and empty stderr' {
+        $keeper = $Os -eq 'windows' ? 'cmd.exe' : 'cat'
+        $workDirectory = $Os -eq 'windows' ? 'C:/Windows/Temp' : '/tmp'
+        $composer = $Os -eq 'windows' ? 'composer.exe' : 'composer'
+        $container = $null
+        try {
+            $container = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
+                'run', '--detach', '--tty', '--workdir', $workDirectory,
+                '--env', 'COMPOSER_ROOT_VERSION=1.0.0', $Image, $keeper
+            )
+            Invoke-Docker -Context $Context -Arguments @(
+                'exec', $container, $composer, 'init', '--no-interaction',
+                '--name=farah/composer-test', '--description=Composer integration test', '--license=MIT'
+            )
+
+            $startInfo = [Diagnostics.ProcessStartInfo]::new('docker')
+            $startInfo.UseShellExecute = $false
+            $startInfo.RedirectStandardOutput = $true
+            $startInfo.RedirectStandardError = $true
+            foreach ($argument in @('--context', $Context, 'exec', $container, $composer, 'exec', '--', 'php', '-r', 'echo "ok";')) {
+                $startInfo.ArgumentList.Add($argument)
+            }
+            $process = [Diagnostics.Process]::Start($startInfo)
+            try {
+                $stdout = $process.StandardOutput.ReadToEndAsync()
+                $stderr = $process.StandardError.ReadToEndAsync()
+                $process.WaitForExit()
+
+                $process.ExitCode | Should -Be 0 -Because $stderr.Result
+                $stdout.Result | Should -BeExactly "ok"
+                $stderr.Result | Should -BeExactly ''
+            } finally {
+                $process.Dispose()
+            }
+        } finally {
+            if ($container) {
+                Remove-TestContainer $container
+            }
+        }
+    }
+
+    It 'provides Composer 2' {
         $version = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
             'run', '--rm', $Image, 'composer', '--version'
         )
         $version | Should -Match 'Composer(?: version)? 2\.'
-
-        if ($Os -eq 'linux') {
-            $verification = Invoke-DockerOutput -Context $Context -RunArguments $DockerRunArguments -Arguments @(
-                'run', '--rm', $Image, 'dpkg', '--verify', 'composer'
-            )
-            # Slim Debian images intentionally omit package documentation.
-            $runtimeChanges = @($verification -split '\r?\n' | Where-Object {
-                $_ -and $_ -notmatch '/usr/share/(doc|man)/'
-            })
-            $runtimeChanges | Should -BeNullOrEmpty
-        }
     }
 }
 

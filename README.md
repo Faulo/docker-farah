@@ -226,6 +226,12 @@ to the PHP information endpoint for your deployment. Configuration sources are
 | UnZip and 7-Zip | Archive handling |
 | PowerShell on Windows | Windows automation |
 
+Every Linux PHP variant installs the latest stable Composer 2 PHAR from
+[Composer's official download channel](https://getcomposer.org/download/).
+Windows variants install Composer through Chocolatey. The same integration
+test initializes a project and verifies that `composer exec` exits successfully,
+prints the expected output, and leaves stderr empty on every PHP variant.
+
 Linux PHP packages include curl, DS, GD, Imagick, IMAP, Intl, Mbstring, MySQL,
 XML, and Zip extensions. Exact package and extension declarations are maintained
 in [`linux/`](linux) and [`windows/`](windows), including a manifest for

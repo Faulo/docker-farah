@@ -37,22 +37,6 @@ RUN dpkg -i /tmp/debsuryorg-archive-keyring.deb \
       > /etc/apt/sources.list.d/php.list \
  && rm -f /tmp/debsuryorg-archive-keyring.deb
 
-# Use a distribution Composer stack compatible with each legacy PHP minor.
-RUN case "$PHP_VERSION" in \
-        7.4) composerSuite=bullseye; composerMirror=https://archive.debian.org ;; \
-        8.0) composerSuite=bookworm; composerMirror=https://deb.debian.org ;; \
-        *) exit 0 ;; \
-    esac \
- && printf '%s\n' \
-        "deb ${composerMirror}/debian ${composerSuite} main" \
-        "deb ${composerMirror}/debian-security ${composerSuite}-security main" \
-        > /etc/apt/sources.list.d/composer.list \
- && printf '%s\n' \
-        'Package: composer php-composer-* php-symfony-* php-psr-* php-react-promise php-json-schema jsonlint php-seld-*' \
-        "Pin: release n=${composerSuite}*" \
-        'Pin-Priority: 990' \
-        > /etc/apt/preferences.d/composer
-
 # Resolve common tools and the selected PHP version in one APT transaction.
 COPY linux/farah-common.packages /tmp/farah-common.packages
 COPY linux/farah-${PHP_VERSION}.packages /tmp/farah.packages
@@ -79,6 +63,7 @@ CMD ["farah", "serve"]
 
 # Composer
 ENV COMPOSER_ALLOW_SUPERUSER=1
+ADD --chmod=755 https://getcomposer.org/download/latest-2.x/composer.phar /usr/local/bin/composer
 
 # Default application
 RUN composer require slothsoft/farah --no-interaction --prefer-dist --optimize-autoloader \
